@@ -1,0 +1,4 @@
+name = "Finometrics"
+uuid = "2167859e-3eeb-11e9-204c-1194adccc062"
+authors = ["cstepper <clinton.tepper.1@anderson.ucla.edu>"]
+version = "0.1.0"
