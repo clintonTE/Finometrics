@@ -757,9 +757,9 @@ function getNeweyWestSlow(X::Matrix{Float64}, ε::Vector{Float64}, lag::Int, dof
   return ret * dofCorrect
 end
 
-getNeweyWestSlow(lin::CTLM, lag::Int) = getNeweyWestSlow(lin.X, lin.Y .- lin.X * lin.β, lag, lin.N/lin.dof)
+getNeweyWestSlow(lin::FMLM, lag::Int) = getNeweyWestSlow(lin.X, lin.Y .- lin.X * lin.β, lag, lin.N/lin.dof)
 
-getNeweyWestFuncSlow(lag::Int)::Function = (lin::CTLM)-> getNeweyWestSlow(lin, lag)
+getNeweyWestFuncSlow(lag::Int)::Function = (lin::FMLM)-> getNeweyWestSlow(lin, lag)
 ###################getWhiteERRORs ###OLS only
 
 function getWhiteΣ!(xqr::FMQR, ε::Vector{Float64},
