@@ -1,0 +1,14 @@
+CategoricalArrays
+DataFrames
+Distributions
+Fontconfig
+Formatting
+ForwardDiff
+GLM
+NLopt
+ODBC
+Revise
+StatsBase
+TexTables
+Dates
+LinearAlgebra
