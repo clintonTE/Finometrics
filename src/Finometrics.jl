@@ -87,7 +87,8 @@ export FMLM, #Regression methods
   MBool,
   MFloat64,
   MInt,
-  MSymbol
+  MSymbol,
+  MDate
 
 
 ##################Custom types
@@ -111,6 +112,7 @@ const MInt = Union{Int, Missing}
 const MFloat64 = Union{Float64, Missing}
 const MSymbol = Union{Symbol, Missing}
 const MString = Union{String, Missing}
+const MDate = Union{Date, Missing}
 
 
 
