@@ -114,6 +114,8 @@ const MSymbol = Union{Symbol, Missing}
 const MString = Union{String, Missing}
 const MDate = Union{Date, Missing}
 
+const ∞ = Inf
+
 
 
 ###VAR Types
