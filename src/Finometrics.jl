@@ -88,7 +88,8 @@ export FMLM, #Regression methods
   MFloat64,
   MInt,
   MSymbol,
-  MDate
+  MDate,
+  ∞
 
 
 ##################Custom types
