@@ -82,6 +82,9 @@ export FMLM, #Regression methods
   NString,
   NSymbol,
   NType,
+  NInt,
+  NFloat64,
+  NDate,
 
   MString,
   MBool,
@@ -107,6 +110,9 @@ abstract type FMModel end
 const NSymbol = Union{Nothing, Symbol}
 const NType = Union{Nothing, Type}
 const NString = Union{Nothing, String}
+const NInt = Union{Int, Nothing}
+const NFloat64 = Union{Float64, Nothing}
+const NDate = Union{Date, Nothing}
 
 const MBool = Union{Bool, Missing}
 const MInt = Union{Int, Missing}
