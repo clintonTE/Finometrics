@@ -30,14 +30,6 @@ mutable struct VAREstimate
   SST::Vector{T} where T <: RegressionSS
 end
 
-#lags any dataframe and renames the new column
-function lagDF!(DF::DataFrame, target::Symbol, lags::Int = 1; name= Symbol("$(target)L$lags"))::DataFrame
-  DF[:,name] = similar(DF[:,target])
-  DF[:,name] .= missing
-  DF[(lags+1):end,name] = DF[1:(end-lags),target]
-
-  return DF
-end
 
 function VAR(ϕ₀::Vector{Float64}, ϕ₁::Matrix{Float64}, L::Matrix{Float64},
     structures::Vector{T}  where T <: Structure)::VAR
