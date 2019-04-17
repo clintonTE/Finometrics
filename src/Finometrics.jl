@@ -157,14 +157,5 @@ include("FMVAR.jl")
 include("FMNumerical.jl")
 
 
-try include("FMWRDS.jl")
-  export wrdsQuery,  #FMWRDS (won't work without configurgation)
-  wrdsGet,
-  wrdsDrop
-catch
-  println("NOTE: ODBC not configured. Associated WRDS functions are inaccessible.")
-end
-
-
 
 end
