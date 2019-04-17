@@ -1,9 +1,9 @@
 module Finometrics
 using Revise
 
-if pwd() ∉ LOAD_PATH
+#=if pwd() ∉ LOAD_PATH
   push!(LOAD_PATH,pwd())
-end
+end=#
 
 
 ##################Dependencies
@@ -72,10 +72,6 @@ export FMLM, #Regression methods
   VARPrediction,
   varΣ,
   propagateImpulse,
-
-  wrdsQuery,  #FMWRDS (won't work without configurgation)
-  wrdsGet,
-  wrdsDrop,
 
   NDict,#Exported types
   NString,
@@ -153,12 +149,22 @@ const LOWER_PAD = "\n"
 
 ###################Files############
 
+# include("$(pwd())/FMReg.jl")
 include("FMReg.jl")
 include("FMIO.jl")
 include("FMStat.jl")
 include("FMVAR.jl")
 include("FMNumerical.jl")
-include("FMWRDS.jl")
+
+
+try include("FMWRDS.jl")
+  export wrdsQuery,  #FMWRDS (won't work without configurgation)
+  wrdsGet,
+  wrdsDrop
+catch
+  println("NOTE: ODBC not configured. Associated WRDS functions are inaccessible.")
+end
+
 
 
 end

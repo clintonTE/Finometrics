@@ -1,7 +1,4 @@
 
-
-
-
 ##################Utility Functions ###############################
 
 #helper function  to get the model matrix from a dataframe given a formula
