@@ -65,7 +65,8 @@ function texTable(; titleCaption::String = "",
   widthDescContent::Vector{Vector{Int}} = #contains the number of columns for each entry
     broadcast((i::Int)->ones(Int,length(descContent[i])),1:length(descContent)),
   colHeaderName::Vector{String} = ["" for i ∈ 1:length(colNames)],
-  nakedTable::Bool = false)
+  nakedTable::Bool = false,
+  alignmentstring::String = string(" l | ", join(["r" for i ∈ 1:length(descContent[1])])))
 
   #size parameters for content
   numContentRows::Int = length(contentRowNames)
@@ -83,11 +84,11 @@ function texTable(; titleCaption::String = "",
       $(length(caption)>0 ? "\\textit{$caption\\\\}" : "")
       \\renewcommand{\\arraystretch}{$arrayStretch}""")
   write(b, """
-      \\begin{tabular}{l | """)
+      \\begin{tabular}{$alignmentstring""")
 
-    for i ∈ 1:(numContentCols) #set the dimensions in tex
+    #=for i ∈ 1:(numContentCols) #set the dimensions in tex
       write(b,"r")
-    end
+    end=#
     #write(b, "{\\textwidth}{Xccccccc}")
     write(b,"}\n \\toprule")#filler tex
 
@@ -198,7 +199,8 @@ function texTable(models::Vector{FMLM}, getΣ::Function, rows::Vector{Symbol};
     scaling::Vector{Float64}=ones(length(rows)),
     decimalDigits::Int = 2,
     colHeaderName::Vector{String} = ["" for i::Int ∈ 1:length(colNames)],
-    nakedTable::Bool = false)
+    nakedTable::Bool = false,
+    alignmentstring::String = string(" l | ", join(["r" for i ∈ 1:length(descContent[1])])))
 
   numCols = length(models)
   numContentRows = length(rows)
@@ -231,7 +233,8 @@ function texTable(models::Vector{FMLM}, getΣ::Function, rows::Vector{Symbol};
     descContent=descContent, notes=notes, arrayStretch=arrayStretch, lineSpacer=lineSpacer,
     summaryMathMode=summaryMathMode, widthColNames=widthColNames,
     widthDescContent=widthDescContent, colHeaderName=colHeaderName,
-    alignmentColNames=alignmentColNames, nakedTable=nakedTable)
+    alignmentColNames=alignmentColNames, nakedTable=nakedTable,
+    alignmentstring=alignmentstring)
 end
 
 function texTable(models::Vector{FM2SLS}, getΣ::Function, rows::Vector{Symbol};
@@ -259,7 +262,8 @@ function texTable(models::Vector{FM2SLS}, getΣ::Function, rows::Vector{Symbol};
     scaling::Vector{Float64}=ones(length(rows)),
     decimalDigits::Int = 2,
     colHeaderName::Vector{String} = ["" for i ∈ 1:length(colNames)],
-    nakedTable=nakedTable)
+    nakedTable=nakedTable,
+    alignmentstring::String = string(" l | ", join(["r" for i ∈ 1:length(descContent[1])])))
 
     numCols = length(models)
     numContentRows = length(rows)
@@ -293,7 +297,7 @@ function texTable(models::Vector{FM2SLS}, getΣ::Function, rows::Vector{Symbol};
       descContent=descContent, notes=notes, arrayStretch=arrayStretch, lineSpacer=lineSpacer,
       summaryMathMode=summaryMathMode, widthColNames=widthColNames,
       widthDescContent=widthDescContent, colHeaderName=colHeaderName,
-      alignmentColNames=alignmentColNames, nakedTable=nakedTable)
+      alignmentColNames=alignmentColNames, nakedTable=nakedTable, alignmentstring=alignmentstring)
 end
 
 
