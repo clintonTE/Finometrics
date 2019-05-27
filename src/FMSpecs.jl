@@ -35,7 +35,7 @@ function FMSpecs(sizehint::NInt = nothing;
     (v::Vector->sizehint!(v, sizehint)).(specvector)
   end
 
-  return FMOLSSpecs{T}(Ref{Int}(0), captureresult,  specvector...)
+  return FMSpecs{T}(Ref{Int}(0), captureresult,  specvector...)
 end
 
 
