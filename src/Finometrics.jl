@@ -5,6 +5,16 @@ using Revise
   push!(LOAD_PATH,pwd())
 end=#
 
+#update steps
+#cd [current project path]
+#] activate .
+#] update
+#] resolve
+#] gc
+#] build
+#] precompile
+
+
 
 ##################Dependencies
 
@@ -72,6 +82,9 @@ export FMLM, #Regression methods
   VARPrediction,
   varΣ,
   propagateImpulse,
+
+  FMSpecs, #FMSpecs
+  computeFMLMresults!,
 
   NDict,#Exported types
   NString,
@@ -155,6 +168,7 @@ include("FMIO.jl")
 include("FMStat.jl")
 include("FMVAR.jl")
 include("FMNumerical.jl")
+include("FMSpecs.jl")
 
 
 
