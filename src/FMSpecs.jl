@@ -40,7 +40,7 @@ end
 
 
 #this applies the results function to each specification
-function computeFMLMresults!(df::DataFrame, specs::FMSpecs)::Nothing
+function computeFMLMresults!(df::AbstractDataFrame, specs::FMSpecs)::Nothing
 
   #make sure the dimensions are corred
   @assert (specs.N[] == length(specs.specnames) &&
