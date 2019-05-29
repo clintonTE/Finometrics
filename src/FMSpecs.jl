@@ -40,7 +40,7 @@ end
 
 
 #this applies the results function to each specification
-function computeFMLMresults!(df::AbstractDataFrame, specs::FMSpecs)::Nothing
+function computeFMLMresults!(dfs::Vector{T<:AbstractDataFrame}, specs::FMSpecs)::Nothing
 
   #make sure the dimensions are corred
   @assert (specs.N[] == length(specs.specnames) &&
@@ -50,10 +50,11 @@ function computeFMLMresults!(df::AbstractDataFrame, specs::FMSpecs)::Nothing
     specs.N[] == length(specs.withinspecs) &&
     specs.N[] == length(specs.clusterspecs))
 
+  @assert length(dfs) == specs.N[]
   #runs the regressions
   #could conceivably parallelize this at some point
   for i::Int ∈ 1:specs.N[]
-    m::FMLM = FMLM(df, specs.xspecs[i],  specs.yspecs[i],
+    m::FMLM = FMLM(dfs[i], specs.xspecs[i],  specs.yspecs[i],
       withinSym = specs.withinspecs[i], clusterSym = specs.clusterspecs[i],
       XNames=specs.xnames[i], YName = specs.yspecs[i])
 
@@ -62,6 +63,10 @@ function computeFMLMresults!(df::AbstractDataFrame, specs::FMSpecs)::Nothing
 
   return nothing
 end
+
+#convenience method for providing a single dataframe
+computeFMLMresults!(df::T where T<:AbstractDataFrame, specs) =
+  computeFMLMresults!((df).(1:specs.N[]), specs)
 
 #provides a keyword access method for creating specs
 function Base.push!(specs; specname::String = "($(specs.N[]))",
