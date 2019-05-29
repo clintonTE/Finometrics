@@ -40,7 +40,7 @@ end
 
 
 #this applies the results function to each specification
-function computeFMLMresults!(dfs::Vector{T<:AbstractDataFrame}, specs::FMSpecs)::Nothing
+function computeFMLMresults!(dfs::Vector{T where T<:AbstractDataFrame}, specs::FMSpecs)::Nothing
 
   #make sure the dimensions are corred
   @assert (specs.N[] == length(specs.specnames) &&
