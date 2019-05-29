@@ -66,7 +66,7 @@ end
 
 #convenience method for providing a single dataframe
 computeFMLMresults!(df::T where T<:AbstractDataFrame, specs) =
-  computeFMLMresults!((df).(1:specs.N[]), specs)
+  computeFMLMresults!((m->df).(1:specs.N[]), specs)
 
 #provides a keyword access method for creating specs
 function Base.push!(specs; specname::String = "($(specs.N[]))",
