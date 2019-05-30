@@ -354,7 +354,7 @@ RMS(v1::Vector{Float64}, v2::Vector{Float64})::Float64 =
 #Takes the prop percentile value, and replaces all lower values with that value
 #Then takes the (1-prop) percentile value, and replaces all higher values with that value
 #All calculations skip missing
-function FMwinsor!(target::AbstractVector; prop::Float64 = 0.0)::Nothing
+function winsorize!(target::AbstractVector; prop::Float64 = 0.0)::Nothing
   local vcomplete::T where T <:typeof(target)
 
   if Missing <: eltype(target)
