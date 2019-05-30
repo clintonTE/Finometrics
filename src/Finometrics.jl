@@ -72,6 +72,7 @@ export FMLM, #Regression methods
   ARMAEstimate,
   generalizeARMA!,
   narrowARMA!,
+  winsordf!,
 
   FMΦInv, #FMNumerical
   FMΦ,

@@ -349,3 +349,23 @@ end
 #quickly calculates the RMS of two vectors
 RMS(v1::Vector{Float64}, v2::Vector{Float64})::Float64 =
   √(abs2(v1 .- v2)/length(v1))
+
+#Based on StatsBase version, but handles missing in a different way
+#Takes the prop percentile value, and replaces all lower values with that value
+#Then takes the (1-prop) percentile value, and replaces all higher values with that value
+#All calculations skip missing
+function FMwinsor!(target::AbstractVector; prop::Float64 = 0.0)::Nothing
+  local vcomplete::T where T <:typeof(target)
+
+  if Missing <: eltype(target)
+    vcomplete =  target[(!ismissing).(target)] #don't trust how quantile handles missing
+  else
+    vcomplete=target
+  end
+
+  local minval::Float64 = quantile(vcomplete, prop)
+  local maxval::Float64 = quantile(vcomplete, 1.0 - prop)
+
+  target .= (f::MFloat64 -> max(minval, min(f,maxval))).(target)
+  return nothing
+end
