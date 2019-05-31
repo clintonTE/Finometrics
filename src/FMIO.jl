@@ -174,7 +174,9 @@ a scaling factor, the number of digits in values, and customizable
 notes
 OUT: A latex table string
 =#
-function texTable(models::Vector{FMLM}, getΣ::Function, rows::Vector{Symbol};
+function texTable(models::Vector{FMLM},
+    getΣ::T where T<:Union{Function, Vector{Function}},
+    rows::Vector{Symbol};
     titleCaption::String = "",
     caption::String = "",
     colNames::Vector{Vector{String}} = [["C$i" for i ∈ 1:length(models)]],
@@ -216,7 +218,11 @@ function texTable(models::Vector{FMLM}, getΣ::Function, rows::Vector{Symbol};
 
   #get the standard errors
   for c ∈ 1:numCols
-      modelsσ[c] .= sqrt.(diag(getΣ(models[c])))
+      if typeof(getΣ) <: Function
+        modelsσ[c] .= sqrt.(diag(getΣ(models[c])))
+      else
+        modelsσ[c] .= sqrt.(diag(getΣ[c](models[c])))
+      end
   end
 
   if length(starLegend) > 0
@@ -237,7 +243,8 @@ function texTable(models::Vector{FMLM}, getΣ::Function, rows::Vector{Symbol};
     alignmentstring=alignmentstring)
 end
 
-function texTable(models::Vector{FM2SLS}, getΣ::Function, rows::Vector{Symbol};
+function texTable(models::Vector{FM2SLS}, getΣ::T where T<:Union{Function, Vector{Function}},
+    rows::Vector{Symbol};
     titleCaption::String = "",
     caption::String = "",
     colNames::Vector{Vector{String}} = [["C$i" for i ∈ 1:length(models)]],
@@ -280,7 +287,11 @@ function texTable(models::Vector{FM2SLS}, getΣ::Function, rows::Vector{Symbol};
 
     #get the standard errors
     for c ∈ 1:numCols
-        modelsσ[c] .= sqrt.(diag(getΣ(models[c])))
+        if typeof(getΣ) <: Function
+          modelsσ[c] .= sqrt.(diag(getΣ(models[c])))
+        else
+          modelsσ[c] .= sqrt.(diag(getΣ[c](models[c])))
+        end
     end
 
     if length(starLegend) > 0
