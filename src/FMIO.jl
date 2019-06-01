@@ -6,13 +6,17 @@
 function num2Str(x::T, decimals::Int=DEFAULT_DECIMALS;
     scaleFactor::Float64 = 1.0,
     scaleFactorOnHurdle::Float64 = 1.0,
-    Ints::Bool = false, scaleHurdle::U=nothing, texEquation::Bool = false)::String where {T<:Real, U<:Union{Nothing,Real}}
+    Ints::Bool = false, scaleHurdle::U=nothing, texEquation::Bool = false)::String where {
+      T<:Union{Real,Missing,Nothing}, U<:Union{Nothing,Real}}
 
   local outStr::String
 
   x*=scaleFactor
 
-  if scaleHurdle ≠ nothing && x≥scaleHurdle
+  #this controls for both missing and nothing values
+  if ismissing(something(x,missing))
+    outStr = ""
+  elseif scaleHurdle ≠ nothing && x≥scaleHurdle
     outStr = "$(Int(round(x*scaleFactorOnHurdle)))"
   elseif decimals == 0 || (Ints && round(x) == x)
     outStr = "$(Int(round(x)))"
