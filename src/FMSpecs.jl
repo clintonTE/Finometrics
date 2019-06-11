@@ -69,7 +69,7 @@ computeFMLMresults!(df::T where T<:AbstractDataFrame, specs) =
   computeFMLMresults!((m->df).(1:specs.N[]), specs)
 
 #provides a keyword access method for creating specs
-function Base.push!(specs; specname::String = "($(specs.N[]))",
+function Base.push!(specs; specname::String = "($(specs.N[]+1))",
   yspec::Symbol = len > 1 ? specs.yspecs[end] : :Y,
   xspec::FMExpr = len > 1 ? specs.xspecs[end] : :X,
   xnames::Vector{Symbol} = len > 1 ? specs.xspecs[end] : [:intercept, :X],
