@@ -369,3 +369,106 @@ function winsorize!(target::AbstractVector; prop::Float64 = 0.0)::Nothing
   target .= (f::MFloat64 -> max(minval, min(f,maxval))).(target)
   return nothing
 end
+
+#lags a variable in the time series
+#assumes the order field is intended to be in ascending order
+function lagwithin!(df::DataFrame,
+  targets::Vector{Symbol},
+  groups::Vector{Symbol},
+  period::Symbol;
+  lags::Int=1,
+  laggednames::Vector{Symbol} = (lags ≠ 1 ?
+    (s::Symbol->Symbol(:L, lags, s)).(targets) : (s::Symbol->Symbol(:L, s)).(targets)),
+  sorted::Bool=false)::Nothing
+
+  if !sorted
+    sort!(df, [groups; period])
+  end
+
+  Ntargets::Int = length(targets)   #pre-allocate the space
+  for t ∈ 1:Ntargets
+    df[!,laggednames[t]] =
+      Vector{Union{eltype(df[!,targets[t]]), Missing}}(undef, size(df, 1))
+  end
+
+  for subdf ∈ groupby(df, groups)
+    Nsub::Int = size(subdf, 1)
+
+    #only run these routines if we need to
+    if Nsub > lags
+      for i::Int ∈ (lags+1):Nsub #iterate for all values
+        for t::Int ∈ 1:Ntargets
+          cur::Int = subdf[i, period]
+
+          #first see if we can lag the easy way
+          if subdf[i-lags, period] == cur - lags
+            subdf[i,laggednames[t]] = subdf[i-lags, targets[t]]
+          elseif lags ≠ 1 #now check the hard way (finding the lagged year), pointless if lags==1
+            location::NInt = findfirst(isequal(cur-lags), subdf[1:(i-1),period])
+
+            #record the lagged value if it is available
+            if !isnothing(location)
+              subdf[i,laggednames[t]] = subdf[location, targets[t]]
+            end
+          end
+        end #targets for loop
+      end #periods for loop
+    end
+  end
+
+  return nothing
+end
+
+#helper method to handle the case of a single target and/or group
+lagwithin!(df::DataFrame,
+  targets::Union{Symbol, Vector{Symbol}},
+  groups::Union{Symbol, Vector{Symbol}},
+  period::Symbol;
+  lags::Int=1,
+  laggedname::NSymbol = nothing,
+  laggednames::Vector{Symbol} = (lags ≠ 1 ?
+    (s::Symbol->Symbol(:L, lags, s)).([targets;]) : (s::Symbol->Symbol(:L, s)).([targets;])),
+  sorted::Bool=false)::Nothing = (lagwithin!(df, [targets;], [groups;], period,
+      lags=lags, laggednames=[something(laggedname, laggednames);], sorted=sorted))
+
+
+#creates a differenced column
+function differencewithin!(df::DataFrame,
+  targets::Vector{Symbol},
+  groups::Vector{Symbol},
+  period::Symbol;
+  differencednames::Vector{Symbol} = (s::Symbol->Symbol(:D, s)).(targets),
+  sorted::Bool=false,
+  createlag::Bool=true,
+  deletelag::Bool=true,
+  laggednames::Vector{Symbol} = (deletelag ?
+    (s::Symbol->Symbol(:L, s, :_temp)).(targets) : (s->Symbol(:L, s)).(targets))
+  )::Nothing
+
+  createlag && lagwithin!(df, targets, groups, period,
+    laggednames=laggednames, sorted=sorted)
+  for t ∈ 1:length(targets)
+    df[!, differencednames[t]] = df[!, targets[t]] .- df[!, laggednames[t]]
+    deletelag && deletecols!(df, laggednames[t])
+  end
+
+  return nothing
+end
+
+#helper method to handle the case of a single target and/or group
+differencewithin!(df::DataFrame,
+  targets::Union{Symbol, Vector{Symbol}},
+  groups::Union{Symbol, Vector{Symbol}},
+  period::Symbol;
+  differencedname::NSymbol = nothing,
+  differencednames::Vector{Symbol} = (s::Symbol->Symbol(:D, s)).([targets;]),
+  sorted::Bool=false,
+  createlag::Bool=true,
+  deletelag::Bool=true,
+  laggedname::NSymbol = nothing,
+  laggednames::Vector{Symbol} = (deletelag ?
+    (s::Symbol->Symbol(:L, s, :_temp)).([targets;]) : (s->Symbol(:L, s)).([targets;]))
+  )::Nothing = differencewithin!(df, [targets;], [groups;], period,
+    sorted=sorted,  createlag=createlag, deletelag=deletelag,
+    differencednames=[something(differencedname, differencednames);],
+    laggednames=[something(laggedname, laggednames);])
