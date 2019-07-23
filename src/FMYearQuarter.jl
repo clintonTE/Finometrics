@@ -68,7 +68,7 @@ function +(yq::YearQuarter, qadded::Int)::YearQuarter
 
   y::Int = (qadded - (q-q₀)) ÷ 4 + y₀
 
-#  @assert q-q₀ + 4*(y-y₀) == qadded #this should never fail
+  @assert q-q₀ + 4*(y-y₀) == qadded #this should never fail
 
   return YearQuarter(y,q)
 end

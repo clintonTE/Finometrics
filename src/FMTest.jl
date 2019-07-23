@@ -127,9 +127,9 @@ function testYearQuarter()
   #println(Float64(yq1))
 end
 
-@time for i ∈ 1:200_000
-  testYearQuarter()
-end
+#@time for i ∈ 1:200_000
+#  testYearQuarter()
+#end
 
 #NOTE: Originally tried to create a primitive Quarter type,
 #keep as reference
