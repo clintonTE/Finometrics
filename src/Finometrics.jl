@@ -103,7 +103,9 @@ export FMLM, #Regression methods
   MInt,
   MSymbol,
   MDate,
-  ∞
+  ∞,
+
+  YearQuarter
 
 
 ##################Custom types
@@ -172,6 +174,7 @@ include("FMStat.jl")
 include("FMVAR.jl")
 include("FMNumerical.jl")
 include("FMSpecs.jl")
+include("FMYearQuarter.jl")
 
 
 

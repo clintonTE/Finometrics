@@ -1,6 +1,9 @@
 using DataFrames, Revise
 NSymbol = Union{Nothing, Symbol}
 NInt = Union{Nothing, Int} #NOTE: consider deleting this later
+import Base: +, -, ==
+
+
 
 #use this to test the lag functions
 function testlaganddifference(N = 10_000)
@@ -83,3 +86,133 @@ function testlaganddifference(N = 10_000)
 end
 
 #testlaganddifference()
+
+function testYearQuarter()
+
+  #test the first constructor
+  yq1::YearQuarter = YearQuarter(1998,2)
+  try
+    YearQuarter(1985,7)
+    @assert false
+  catch err
+    (typeof(err)<:AssertionError) && error("Error catching invalid values in first constructor")
+  end
+
+  #test the second constructor
+  yq2::YearQuarter = YearQuarter(2000.4)
+  try
+    YearQuarter(2000.05)
+    @assert false
+  catch err
+    (typeof(err)<:AssertionError) && error("Error catching invalid values in 2nd constructor")
+  end
+
+  #test addition of quarters
+  @assert yq1 + 10 == yq2
+  @assert yq2 - 10 == yq1
+  @assert yq2 - yq1 == 10
+
+  println(yq1)
+  println(Float64(yq1))
+end
+
+testYearQuarter()
+
+#NOTE: Originally tried to create a primitive Quarter type,
+#keep as reference
+#=
+primitive type YearQuarter <: AbstractFloat 64 end
+
+
+function YearQuarter(y::Int, q::Int)
+  #default effectively means that a provided year is treated as the fourth quarter of that year
+  q == 1 || q==2 || q==3 || q==4 || error("Invalid YearQuarter $f")
+
+  return reinterpret(YearQuarter, y + q/10)
+end
+
+
+function YearQuarter(f::Real)::YearQuarter
+  y::Int = round(f)
+  q::Int = (f*10-y*10)
+  (q==0) && (q=4) #if a year is passed, assume it is the end of the year (q4)
+  q == 1 || q==2 || q==3 || q==4 || error("Invalid YearQuarter $f")
+  return reinterpret(YearQuarter, f)
+end
+
+#fallback in case we need these
+Float64(yq::YearQuarter) = reinterpret(Float64, yq)
+Base.show(io::IO, yq::YearQuarter) = print(io, Float64(yq))
+
+#quick way to split the year quarter
+function Tuple{Int,Int}(yq::YearQuarter)::Tuple{Int,Int}
+
+  f::Float64 = Float64(yq)
+  y::Int = Int(round(f))
+  q::Int = f*10 - y*10
+
+  return (y,q)
+end
+
+#allows for adding quarters
+function +(yq::YearQuarter, qadded::Int)::YearQuarter
+  (y::Int, q::Int) = yq
+
+  y += (qadded) ÷ 4
+  rawq::Int = qadded - yadded * 4 + q #should be ∈ -2:7
+
+  #this handles the edge cases for the quarters
+  if (rawq > -3) && (rawq ≤ 0)
+    y -= 1
+    q = rawq + 4
+  elseif (1≤rawq) && (rawq≤4)
+    q = rawq
+  elseif (5≤rawq) && (rawq≤7)
+    y += 1
+    q = rawq - 4
+  else
+    @assert false
+  end
+
+  return reinterpret(YearQuarter, y + q/10)
+end
+
+#helper methods to build on the above
++(qadded::Int, yq::YearQuarter)::YearQuarter = yq + qadded
+-(yq::YearQuarter, qadded::Int)::YearQuarter = yq + (-1*qadded)
+
+#gets the number of quarters difference
+function -(yq1::YearQuarter, yq2::YearQuarter)::Int
+  (y1::Int, q1::Int) = yq1
+  (y2::Int, q2::Int) = yq2
+
+  Δy::Int = y1 - y2
+  Δq::Int = q1 - q2
+
+  return Δy * 4 + Δq
+end
+
+function testYearQuarter()
+
+  #test the first constructor
+  yq1::YearQuarter = YearQuarter(1985,3)
+  try
+    YearQuarter(1985,7)
+    @assert false
+  catch err
+    (typeof(err)<:AssertionError) && error("Error catching invalid values in first constructor")
+  end
+
+  #test the second constructor
+  yq2::YearQuarter = YearQuarter(2000.4)
+  try
+    YearQuarter(2000.05)
+    @assert false
+  catch err
+    (typeof(err)<:AssertionError) && error("Error catching invalid values in 2nd constructor")
+  end
+
+  println(yq1)
+end
+
+testYearQuarter()=#
