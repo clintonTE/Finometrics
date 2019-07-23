@@ -133,7 +133,7 @@ const MFloat64 = Union{Float64, Missing}
 const MSymbol = Union{Symbol, Missing}
 const MString = Union{String, Missing}
 const MDate = Union{Date, Missing}
-
+const MYearQuarter = Union{YearQuarter, Missing}
 const ∞ = Inf
 
 

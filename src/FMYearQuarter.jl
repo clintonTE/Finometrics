@@ -19,6 +19,13 @@ function YearQuarter(f::Real)::YearQuarter
   return YearQuarter(y,q)
 end
 
+function YearQuarter(d::Date)
+  y::UInt16 = year(d)
+  q::UInt8 = quarterofyear(d)
+
+  return YearQuarter(y,q)
+end
+
 #fallback in case we need these
 Float64(yq::YearQuarter) = yq.y + yq.q/10
 Base.show(io::IO, yq::YearQuarter) = print(io, Float64(yq))
