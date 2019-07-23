@@ -381,6 +381,8 @@ function lagwithin!(df::DataFrame,
     (s::Symbol->Symbol(:L, lags, s)).(targets) : (s::Symbol->Symbol(:L, s)).(targets)),
   sorted::Bool=false)::Nothing
 
+  T::Type = eltype(df[!,period]) #the type of the period column
+
   if !sorted
     sort!(df, [groups; period])
   end
@@ -398,7 +400,7 @@ function lagwithin!(df::DataFrame,
     if Nsub > lags
       for i::Int ∈ (lags+1):Nsub #iterate for all values
         for t::Int ∈ 1:Ntargets
-          cur::Int = subdf[i, period]
+          cur::T = subdf[i, period]
 
           #first see if we can lag the easy way
           if subdf[i-lags, period] == cur - lags
