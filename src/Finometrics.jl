@@ -21,6 +21,8 @@ end=#
 using  DataFrames, Distributions, StatsBase, GLM, CategoricalArrays,
   Dates, NLopt, ForwardDiff, Formatting, TexTables, DataStructures,
   LinearAlgebra
+
+import Base: +, -, ==, >, <, ≥, ≤
 #=NOTE: Replace with LinearAlgebra=#
 
 
