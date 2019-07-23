@@ -1,7 +1,10 @@
 using DataFrames, Revise
-NSymbol = Union{Nothing, Symbol}
-NInt = Union{Nothing, Int} #NOTE: consider deleting this later
-import Base: +, -, ==
+#NSymbol = Union{Nothing, Symbol}
+#NInt = Union{Nothing, Int} #NOTE: consider deleting this later
+#import Base: +, -, ==, >, <, ≥, ≤
+
+
+using Finometrics
 
 
 
@@ -108,15 +111,23 @@ function testYearQuarter()
   end
 
   #test addition of quarters
-  @assert yq1 + 10 == yq2
-  @assert yq2 - 10 == yq1
+  for i ∈ 0:10
+    @assert (yq1 + i) == (yq2 - (10-i))
+  end
+  #@assert yq1 + 10 == yq2
+  #@assert yq2 - 10 == yq1
+
   @assert yq2 - yq1 == 10
+  @assert yq1 < yq2
+  @assert yq2 > yq1
+  @assert yq2 ≥ yq1
+  @assert yq1 ≥ yq1
 
   println(yq1)
   println(Float64(yq1))
 end
 
-testYearQuarter()
+#testYearQuarter()
 
 #NOTE: Originally tried to create a primitive Quarter type,
 #keep as reference

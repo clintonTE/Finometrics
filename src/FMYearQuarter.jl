@@ -35,7 +35,7 @@ Tuple{Int,Int}(yq::YearQuarter)::Tuple{Int,Int} = (yq.y, yq.q)
 
 
 #allows for adding quarters
-function +(yq::YearQuarter, qadded::Int)::YearQuarter
+function pold(yq::YearQuarter, qadded::Int)::YearQuarter
   (y::Int, q::Int) = Tuple{Int,Int}(yq)
 
   yadded::Int = (qadded) ÷ 4
@@ -54,6 +54,21 @@ function +(yq::YearQuarter, qadded::Int)::YearQuarter
   else
     @assert false
   end
+
+  return YearQuarter(y,q)
+end
+
+#allows for adding quarters
+function +(yq::YearQuarter, qadded::Int)::YearQuarter
+  (y₀::Int, q₀::Int) = Tuple{Int,Int}(yq)
+
+
+  q::Int = (q₀ + qadded) % 4
+  (q≤0) && (q+=4) #only allow 1,2,3,4
+
+  y::Int = (qadded - (q-q₀)) ÷ 4 + y₀
+
+  @assert q-q₀ + 4*(y-y₀) == qadded #this should never fail
 
   return YearQuarter(y,q)
 end
