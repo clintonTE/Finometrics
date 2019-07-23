@@ -123,11 +123,13 @@ function testYearQuarter()
   @assert yq2 ≥ yq1
   @assert yq1 ≥ yq1
 
-  println(yq1)
-  println(Float64(yq1))
+  #println(yq1)
+  #println(Float64(yq1))
 end
 
-#testYearQuarter()
+@time for i ∈ 1:200_000
+  testYearQuarter()
+end
 
 #NOTE: Originally tried to create a primitive Quarter type,
 #keep as reference
