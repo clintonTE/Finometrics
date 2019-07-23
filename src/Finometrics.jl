@@ -22,7 +22,7 @@ using  DataFrames, Distributions, StatsBase, GLM, CategoricalArrays,
   Dates, NLopt, ForwardDiff, Formatting, TexTables, DataStructures,
   LinearAlgebra
 
-import Base: +, -, ==, >, <, ≥, ≤
+import Base: +, -, ==, >, <, ≥, ≤, isless, isequal
 #=NOTE: Replace with LinearAlgebra=#
 
 
