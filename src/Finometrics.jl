@@ -107,7 +107,8 @@ export FMLM, #Regression methods
   MDate,
   ∞,
 
-  YearQuarter
+  YearQuarter,
+  MYearQuarter
 
 
 ##################Custom types
