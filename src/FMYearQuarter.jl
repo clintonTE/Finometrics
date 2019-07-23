@@ -71,9 +71,13 @@ function -(yq1::YearQuarter, yq2::YearQuarter)::Int
   return Δy * 4 + Δq
 end
 
-#comparison operators
-==(yq1::YearQuarter, yq2::YearQuarter) = (yq1.y==yq2.y) && (yq1.q==yq2.q)
->(yq1::YearQuarter, yq2::YearQuarter) = (yq1.y>yq2.y) || ((yq1.y==yq2.y) && (yq1.q>yq2.q))
-<(yq1::YearQuarter, yq2::YearQuarter) = yq2 > yq1
-≥(yq1::YearQuarter, yq2::YearQuarter) = (yq1 > yq2) || (yq1 == yq2)
-≤(yq1::YearQuarter, yq2::YearQuarter) = yq2 ≥ yq1
+#comparison operators (primary sorting functions, then operator symbols)
+isequal(yq1::YearQuarter, yq2::YearQuarter) = (yq1.y==yq2.y) && (yq1.q==yq2.q)
+isless(yq1::YearQuarter, yq2::YearQuarter) = (yq1.y<yq2.y) || ((yq1.y==yq2.y) && (yq1.q<yq2.q))
+
+==(yq1::YearQuarter, yq2::YearQuarter) = isequal(yq1, yq2)
+<(yq1::YearQuarter, yq2::YearQuarter) = isless(yq1, yq2)
+>(yq1::YearQuarter, yq2::YearQuarter) = isless(yq2, yq1)
+
+≤(yq1::YearQuarter, yq2::YearQuarter) = isless(yq1, yq2) || isequal(yq1, yq2)
+≥(yq1::YearQuarter, yq2::YearQuarter) = isless(yq2, yq1) || isequal(yq1, yq2)
