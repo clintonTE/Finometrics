@@ -71,4 +71,9 @@ function -(yq1::YearQuarter, yq2::YearQuarter)::Int
   return Δy * 4 + Δq
 end
 
+#comparison operators
 ==(yq1::YearQuarter, yq2::YearQuarter) = (yq1.y==yq2.y) && (yq1.q==yq2.q)
+>(yq1::YearQuarter, yq2::YearQuarter) = (yq1.y>yq2.y) || ((yq1.y==yq2.y) && (yq1.q>yq2.q))
+<(yq1::YearQuarter, yq2::YearQuarter) = yq2 > yq1
+≥(yq1::YearQuarter, yq2::YearQuarter) = (yq1 > yq2) || (yq1 == yq2)
+≤(yq1::YearQuarter, yq2::YearQuarter) = yq2 ≥ yq1
