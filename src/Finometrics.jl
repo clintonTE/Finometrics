@@ -133,7 +133,6 @@ const MFloat64 = Union{Float64, Missing}
 const MSymbol = Union{Symbol, Missing}
 const MString = Union{String, Missing}
 const MDate = Union{Date, Missing}
-const MYearQuarter = Union{YearQuarter, Missing}
 const ∞ = Inf
 
 
@@ -176,6 +175,7 @@ include("FMNumerical.jl")
 include("FMSpecs.jl")
 include("FMYearQuarter.jl")
 
-
+#type is derived from a user-defined type
+const MYearQuarter = Union{YearQuarter, Missing}
 
 end
