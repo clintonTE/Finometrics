@@ -131,6 +131,44 @@ end
 #  testYearQuarter()
 #end
 
+function testexisting()
+  @assert ismissing(existing(missing))
+  @assert existing(1) == 1
+  @assert existing(missing,2) == 2
+  @assert existing(1,2) == 1
+  @assert existing(1,missing) == 1
+  @assert existing(1,2,3) == 1
+  @assert existing(missing,2,3) == 2
+  @assert existing(1,missing,3) == 1
+  @assert existing(1,2,missing) == 1
+  @assert existing(missing,2,missing) == 2
+  @assert existing(missing,missing,3) == 3
+  @assert existing([missings(100);101]...) == 101
+  @assert existing([1; missings(100)]...) == 1
+  @assert existing([missings(50); 51; missings(50)]...) == 51
+  @assert existing(collect(1:101)...) == 1
+end
+
+function testexisting2()
+  @assert ismissing(coalesce(missing))
+  @assert coalesce(1) == 1
+  @assert coalesce(missing,2) == 2
+  @assert coalesce(1,2) == 1
+  @assert coalesce(1,missing) == 1
+  @assert coalesce(1,2,3) == 1
+  @assert coalesce(missing,2,3) == 2
+  @assert coalesce(1,missing,3) == 1
+  @assert coalesce(1,2,missing) == 1
+  @assert coalesce(missing,2,missing) == 2
+  @assert coalesce(missing,missing,3) == 3
+  @assert coalesce([missings(100);101]...) == 101
+  @assert coalesce([1; missings(100)]...) == 1
+  @assert coalesce([missings(50); 51; missings(50)]...) == 51
+  @assert coalesce(collect(1:101)...) == 1
+end
+
+@time testexisting()
+
 #NOTE: Originally tried to create a primitive Quarter type,
 #keep as reference
 #=

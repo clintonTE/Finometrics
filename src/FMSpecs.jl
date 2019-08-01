@@ -43,14 +43,14 @@ end
 function computeFMLMresults!(dfs::Vector{T}, specs::FMSpecs)::Nothing where T<:AbstractDataFrame
 
   #make sure the dimensions are corred
-  @assert (specs.N[] == length(specs.specnames) &&
+  (specs.N[] == length(specs.specnames) &&
     specs.N[] == length(specs.yspecs) &&
     specs.N[] == length(specs.xspecs) &&
     specs.N[] == length(specs.xnames) &&
     specs.N[] == length(specs.withinspecs) &&
-    specs.N[] == length(specs.clusterspecs))
+    specs.N[] == length(specs.clusterspecs) &&
+    specs.N[] == length(dfs)) && error("Dimension mismatch error 43434 FMSpecs")
 
-  @assert length(dfs) == specs.N[]
   #runs the regressions
   #could conceivably parallelize this at some point
   for i::Int ∈ 1:specs.N[]

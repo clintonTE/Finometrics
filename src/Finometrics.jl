@@ -14,17 +14,13 @@ end=#
 #] build
 #] precompile
 
-
-
 ##################Dependencies
 
 using  DataFrames, Distributions, StatsBase, GLM, CategoricalArrays,
   Dates, NLopt, ForwardDiff, Formatting, TexTables, DataStructures,
   LinearAlgebra
 
-import Base: +, -, ==, >, <, ≥, ≤, isless, isequal
-#=NOTE: Replace with LinearAlgebra=#
-
+import Base: +, -, ==, >, <, ≥, ≤, isless, isequal, push!
 
 ######################Methods####################
 export FMLM, #Regression methods
@@ -112,10 +108,6 @@ export FMLM, #Regression methods
 
 
 ##################Custom types
-###NOTE: 0.7 Compat Hacks, delte on upgrade
-#const Nothing = Void
-#const LinearAlgebra = Base.LinAlg #NOTE:Compat Hack
-#const AbstractRange = Range #NOTE compat hack
 
 ###FMReg Types
 const FMExpr = Union{Symbol,Expr,Nothing}
@@ -137,7 +129,6 @@ const MSymbol = Union{Symbol, Missing}
 const MString = Union{String, Missing}
 const MDate = Union{Date, Missing}
 const ∞ = Inf
-
 
 
 ###VAR Types
@@ -177,6 +168,7 @@ include("FMVAR.jl")
 include("FMNumerical.jl")
 include("FMSpecs.jl")
 include("FMYearQuarter.jl")
+include("FMRegBroken2SLS.jl")
 
 #type is derived from a user-defined type
 const MYearQuarter = Union{YearQuarter, Missing}
