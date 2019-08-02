@@ -22,6 +22,21 @@ using  DataFrames, Distributions, StatsBase, GLM, CategoricalArrays,
 
 import Base: +, -, ==, >, <, ≥, ≤, isless, isequal, push!
 
+#######################MACROS###################
+#useful macro for conditionally running things in parallel
+macro mpar(cond, expr)
+  if cond
+    quote
+      :($(Threads.@threads($expr)))
+    end
+  else
+    quote
+      :($($expr))
+    end
+  end
+end
+
+
 ######################Methods####################
 export FMLM, #Regression methods
   FM2SLS,
@@ -172,5 +187,6 @@ include("FMRegBroken2SLS.jl")
 
 #type is derived from a user-defined type
 const MYearQuarter = Union{YearQuarter, Missing}
+
 
 end

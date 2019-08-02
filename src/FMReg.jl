@@ -160,7 +160,7 @@ NOTE: RHS expression must be ordered with factors last, otherwise
     the factor names will be incorrect =#
 function FMLM(df::AbstractDataFrame,  XExpr::T, YSym::Symbol;
     XNames::Vector{Symbol}=[Symbol(:Intercept)], YName::Symbol=:Y,
-    containsmissings=true, withinSym::V = nothing, clusterSym::R = nothing,
+    containsmissings::Bool=true, withinSym::V = nothing, clusterSym::R = nothing,
         fixedEffectsSym = nothing)::FMLM  where {
         T <: FMExpr, V<:Union{Symbol,Nothing}, R<:Union{Symbol, Nothing}}
 
