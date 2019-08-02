@@ -25,13 +25,11 @@ import Base: +, -, ==, >, <, ≥, ≤, isless, isequal, push!
 #######################MACROS###################
 #useful macro for conditionally running things in parallel
 macro mpar(cond, expr)
-  if cond
-    quote
-      :($(Threads.@threads($expr)))
-    end
-  else
-    quote
-      :($($expr))
+  quote
+    if $(esc(cond))
+        :($(Threads.@threads($expr)))
+    else
+        :($($expr))
     end
   end
 end

@@ -17,8 +17,8 @@ struct FMSpecs{T<:Any}
 end
 
 #creates the bare constructor
-function FMSpecs(sizehint::NInt = nothing;
-    ::Type{T} = FMLM,
+function FMSpecs(sizehint::NInt = nothing,
+    ::Type{T} = FMLM;
     captureresult::Function = (f(m::FMLM)::T=m) #default result function is the full regression model
   )  where T
   local specnames::Vector{String} = Vector{String}()
