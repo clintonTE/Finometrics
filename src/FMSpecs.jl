@@ -50,7 +50,7 @@ function computeFMLMresults!(dfs::Vector{T}, specs::FMSpecs;
     specs.N[] == length(specs.xnames) &&
     specs.N[] == length(specs.withinspecs) &&
     specs.N[] == length(specs.clusterspecs)
-    ) && error("Dimension mismatch error 43434 FMSpecs")
+    ) || error("Dimension mismatch error 43434 FMSpecs")
 
   (specs.N[] == length(dfs)) && "Input df views dimenion mismatch:
     dfs length: $(length(dfs)), specs.N[]: $(specs.N[])"
