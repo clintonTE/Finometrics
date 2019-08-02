@@ -48,7 +48,7 @@ end
 
 #drops missings form a dataframe
 function cloakmissings(df::T, syms::Vector{Symbol})::T where {T<:AbstractDataFrame}
-  return view(df,completecases(df[syms]),:)
+  return view(df,completecases(df[!,syms]),:)
 end
 
 #helper function for the above, de-nulls entire dataframe
@@ -202,7 +202,7 @@ function FMLM(df::AbstractDataFrame,  XExpr::T, YSym::Symbol;
 
     #println("flag2")
     #drop the columns which arn't going into the model matrix
-    dfSub = view(dfSub[[XSym; YSym]],1:size(dfSub,1), :)
+    dfSub = view(dfSub, 1:size(dfSub,1), [XSym; YSym])
     #println("flag3")
 
     #get the factor expanded model matrix (Adds the dummies)
@@ -212,8 +212,8 @@ function FMLM(df::AbstractDataFrame,  XExpr::T, YSym::Symbol;
     #this is a check to make sure the factor expansion follows other columns
     if length(XSym) > 1
         for i ∈ 2:length(XSym) #all types
-            if typeof(dfSub[XSym[i-1]])<:CategoricalArray &&
-                !(typeof(dfSub[XSym[i]])<:CategoricalArray)
+            if typeof(dfSub[!, XSym[i-1]])<:CategoricalArray &&
+                !(typeof(dfSub[!, XSym[i]])<:CategoricalArray)
                 @warn "Type of $(typeof(dfSub[i])) is preceeded by type of
                     factor. Column names are likely MISALIGNED. Put factors
                     after numerical variables in RHS expressions."
@@ -238,7 +238,7 @@ function FMLM(df::AbstractDataFrame,  XExpr::T, YSym::Symbol;
     else
       #  println("flag3b")
         return FMLM(XModelMatrix,
-            Vector{Float64}(dfSub[YSym]), clusters = clusters,
+            Vector{Float64}(dfSub[!, YSym]), clusters = clusters,
             XNames=XNamesFull, YName=YName)
     end
 
