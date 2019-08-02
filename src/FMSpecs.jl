@@ -6,7 +6,7 @@ the building blocks of regression specifications=#
 #NOTE: if this construct works well I may add it to Finometrics
 struct FMSpecs{T<:Any}
   N::Ref{Int} #number of specs, reference construct allows for immutability
-  captureresult::Function
+  aggfunc::Function
   specnames::Vector{String}
   yspecs::Vector{Symbol}
   xspecs::Vector{FMExpr}
@@ -19,7 +19,7 @@ end
 #creates the bare constructor
 function FMSpecs(sizehint::NInt = nothing,
     ::Type{T} = FMLM;
-    captureresult::Function = (f(m::FMLM)::T=m) #default result function is the full regression model
+    aggfunc::Function = (f(m::FMLM)::T=m) #default result function is the full regression model
   )  where T
   local specnames::Vector{String} = Vector{String}()
   local yspecs::Vector{Symbol} = Vector{Symbol}()
@@ -35,7 +35,7 @@ function FMSpecs(sizehint::NInt = nothing,
     (v::Vector->sizehint!(v, sizehint)).(specvector)
   end
 
-  return FMSpecs{T}(Ref{Int}(0), captureresult,  specvector...)
+  return FMSpecs{T}(Ref{Int}(0), aggfunc,  specvector...)
 end
 
 
@@ -59,7 +59,7 @@ function computeFMLMresults!(dfs::Vector{T}, specs::FMSpecs;
       withinSym = specs.withinspecs[i], clusterSym = specs.clusterspecs[i],
       XNames=specs.xnames[i], YName = specs.yspecs[i])
 
-    push!(specs.results, specs.captureresult(m))
+    push!(specs.results, specs.aggfunc(m))
   end
 
   return nothing
