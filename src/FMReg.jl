@@ -47,8 +47,9 @@ end
 
 
 #drops missings form a dataframe
-cloakmissings(df::T  where {T<:AbstractDataFrame}, syms::Vector{Symbol})::T =
-    view(df,completecases(df[syms]),:)
+function cloakmissings(df::T, syms::Vector{Symbol})::T where {T<:AbstractDataFrame}
+  return view(df,completecases(df[syms]),:)
+end
 
 #helper function for the above, de-nulls entire dataframe
 #IN: a subdataframe #OUT: subdataframe less the null entries
@@ -181,7 +182,7 @@ function FMLM(df::AbstractDataFrame,  XExpr::T, YSym::Symbol;
     if clusterSym ≠ nothing && clusterSym ∉ viewArray
       viewArray = [viewArray; clusterSym]
     end
-    dfSub::SubDataFrame = view(df[viewArray], 1:size(df,1), :)
+    dfSub::SubDataFrame = view(df[!, viewArray], 1:size(df,1), :)
     #println("flag1")
     if containsmissings    # if we are going to drop nulls
       dfSub = cloakmissings(dfSub)
