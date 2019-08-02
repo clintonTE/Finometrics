@@ -41,7 +41,7 @@ end
 
 #this applies the results function to each specification
 function computeFMLMresults!(dfs::Vector{T}, specs::FMSpecs;
-    parallel::Bool=false)::Nothing where T<:AbstractDataFrame
+    parallel::Bool=false, containsmissings::Bool=true)::Nothing where T<:AbstractDataFrame
 
   #make sure the dimensions are corred
   (specs.N[] == length(specs.specnames) &&
@@ -60,7 +60,8 @@ function computeFMLMresults!(dfs::Vector{T}, specs::FMSpecs;
   @mpar parallel for i::Int ∈ 1:specs.N[]
     m::FMLM = FMLM(dfs[i], specs.xspecs[i],  specs.yspecs[i],
       withinSym = specs.withinspecs[i], clusterSym = specs.clusterspecs[i],
-      XNames=specs.xnames[i], YName = specs.yspecs[i])
+      XNames=specs.xnames[i], YName = specs.yspecs[i],
+      containsmissings=containsmissings)
 
     push!(specs.results, specs.aggfunc(m))
   end
@@ -70,9 +71,10 @@ end
 
 #convenience method for providing a single dataframe
 computeFMLMresults!(df::T where T<:AbstractDataFrame, specs::FMSpecs;
-  parallel::Bool=false) =
+  parallel::Bool=false, containsmissings::Bool = true) =
   computeFMLMresults!(
-    (i::Int->view(df, :, :)).(1:(specs.N[])), specs, parallel=parallel)
+    (i::Int->view(df, :, :)).(1:(specs.N[])), specs,
+    parallel=parallel, containsmissings=containsmissings)
 
 #provides a keyword access method for creating specs
 function Base.push!(specs; specname::String = "($(specs.N[]+1))",

@@ -94,7 +94,7 @@ end
 #main constructor for the FMQR object
 #IN: X Matrix
 #OUT: FMQR object
-function FMQR(X::Matrix{Float64}; keepX = true)::FMQR
+function FMQR(X::Matrix{Float64}; keepX::Bool = true)::FMQR
   local Q::Matrix{Float64}
   local R::Matrix{Float64}
   local QRCompact::LinearAlgebra.QRCompactWY
@@ -162,7 +162,7 @@ NOTE: RHS expression must be ordered with factors last, otherwise
 function FMLM(df::AbstractDataFrame,  XExpr::T, YSym::Symbol;
     XNames::Vector{Symbol}=[Symbol(:Intercept)], YName::Symbol=:Y,
     containsmissings::Bool=true, withinSym::V = nothing, clusterSym::R = nothing,
-        fixedEffectsSym = nothing)::FMLM  where {
+        fixedEffectsSym::NSymbol = nothing)::FMLM  where {
         T <: FMExpr, V<:Union{Symbol,Nothing}, R<:Union{Symbol, Nothing}}
 
     #NOTE: Delete when code is fully updated
