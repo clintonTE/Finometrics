@@ -20,7 +20,7 @@ using  DataFrames, Distributions, StatsBase, GLM, CategoricalArrays,
   Dates, NLopt, ForwardDiff, Formatting, TexTables, DataStructures,
   LinearAlgebra
 
-import Base: +, -, ==, >, <, ≥, ≤, isless, isequal, push!
+import Base: +, -, ==, >, <, ≥, ≤, isless, isequal, push!, length
 
 #######################MACROS###################
 #useful macro for conditionally running things in parallel

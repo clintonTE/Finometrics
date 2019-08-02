@@ -49,8 +49,11 @@ function computeFMLMresults!(dfs::Vector{T}, specs::FMSpecs;
     specs.N[] == length(specs.xspecs) &&
     specs.N[] == length(specs.xnames) &&
     specs.N[] == length(specs.withinspecs) &&
-    specs.N[] == length(specs.clusterspecs) &&
-    specs.N[] == length(dfs)) && error("Dimension mismatch error 43434 FMSpecs")
+    specs.N[] == length(specs.clusterspecs)
+    ) && error("Dimension mismatch error 43434 FMSpecs")
+
+  (specs.N[] == length(dfs)) && "Input df views dimenion mismatch:
+    dfs length: $(length(dfs)), specs.N[]: $(specs.N[])"
 
   #runs the regressions
   #could conceivably parallelize this at some point
@@ -68,8 +71,8 @@ end
 #convenience method for providing a single dataframe
 computeFMLMresults!(df::T where T<:AbstractDataFrame, specs::FMSpecs;
   parallel::Bool=false) =
-  computeFMLMresults!((m->view(df, :, :)).(1:specs.N[]),
-    specs, parallel=parallel)
+  computeFMLMresults!(
+    (i::Int->view(df, :, :)).(1:(specs.N[])), specs, parallel=parallel)
 
 #provides a keyword access method for creating specs
 function Base.push!(specs; specname::String = "($(specs.N[]+1))",
@@ -91,3 +94,5 @@ function Base.push!(specs; specname::String = "($(specs.N[]+1))",
 
   return specs
 end
+
+Base.length(specs::FMSpecs) = specs.N[]
