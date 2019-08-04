@@ -1,11 +1,11 @@
-using DataFrames, Revise
+using DataFrames, Revise, Dates
 #NSymbol = Union{Nothing, Symbol}
 #NInt = Union{Nothing, Int} #NOTE: consider deleting this later
-#import Base: +, -, ==, >, <, ≥, ≤
+import Base: +, -, ==, >, <, ≥, ≤, length, isless, isequal
 
 
-using Finometrics
-
+#=using Finometrics
+using Revise
 
 
 #use this to test the lag functions
@@ -125,145 +125,149 @@ function testYearQuarter()
 
   #println(yq1)
   #println(Float64(yq1))
+end=#
+
+abstract type YearPeriod end
+##################################Year-Month#####################
+struct YearMonth <: YearPeriod
+  y::UInt16
+  m::UInt8
+
+  function YearMonth(y,m)
+    (m≥1 && m≤12) || error("Invalid YearMonth $y $m")
+    return new(y,m)
+  end
 end
 
-#@time for i ∈ 1:200_000
-#  testYearQuarter()
-#end
+#creates a year month from yyyymm date style
+function YearMonth(i::Integer)::YearMonth
+  local y::UInt16
+  local m::UInt8
 
-function testexisting()
-  @assert ismissing(existing(missing))
-  @assert existing(1) == 1
-  @assert existing(missing,2) == 2
-  @assert existing(1,2) == 1
-  @assert existing(1,missing) == 1
-  @assert existing(1,2,3) == 1
-  @assert existing(missing,2,3) == 2
-  @assert existing(1,missing,3) == 1
-  @assert existing(1,2,missing) == 1
-  @assert existing(missing,2,missing) == 2
-  @assert existing(missing,missing,3) == 3
-  @assert existing([missings(100);101]...) == 101
-  @assert existing([1; missings(100)]...) == 1
-  @assert existing([missings(50); 51; missings(50)]...) == 51
-  @assert existing(collect(1:101)...) == 1
-end
+  (i>1000_00 && i<10000_00) || error("Invalid YearMonth $i")
+  (y,m) = (i ÷ 100, i % 100)
 
-function testexisting2()
-  @assert ismissing(coalesce(missing))
-  @assert coalesce(1) == 1
-  @assert coalesce(missing,2) == 2
-  @assert coalesce(1,2) == 1
-  @assert coalesce(1,missing) == 1
-  @assert coalesce(1,2,3) == 1
-  @assert coalesce(missing,2,3) == 2
-  @assert coalesce(1,missing,3) == 1
-  @assert coalesce(1,2,missing) == 1
-  @assert coalesce(missing,2,missing) == 2
-  @assert coalesce(missing,missing,3) == 3
-  @assert coalesce([missings(100);101]...) == 101
-  @assert coalesce([1; missings(100)]...) == 1
-  @assert coalesce([missings(50); 51; missings(50)]...) == 51
-  @assert coalesce(collect(1:101)...) == 1
-end
-
-@time testexisting()
-
-#NOTE: Originally tried to create a primitive Quarter type,
-#keep as reference
-#=
-primitive type YearQuarter <: AbstractFloat 64 end
-
-
-function YearQuarter(y::Int, q::Int)
-  #default effectively means that a provided year is treated as the fourth quarter of that year
-  q == 1 || q==2 || q==3 || q==4 || error("Invalid YearQuarter $f")
-
-  return reinterpret(YearQuarter, y + q/10)
-end
-
-
-function YearQuarter(f::Real)::YearQuarter
-  y::Int = round(f)
-  q::Int = (f*10-y*10)
-  (q==0) && (q=4) #if a year is passed, assume it is the end of the year (q4)
-  q == 1 || q==2 || q==3 || q==4 || error("Invalid YearQuarter $f")
-  return reinterpret(YearQuarter, f)
+  return YearMonth(y,m)
 end
 
 #fallback in case we need these
-Float64(yq::YearQuarter) = reinterpret(Float64, yq)
-Base.show(io::IO, yq::YearQuarter) = print(io, Float64(yq))
+Int(ym::YearMonth)::Int = ym.y*100 + ym.m
+Base.show(io::IO, ym::YearMonth) = print(io, "$(ym.y)_$(ym.m)")
 
 #quick way to split the year quarter
-function Tuple{Int,Int}(yq::YearQuarter)::Tuple{Int,Int}
-
-  f::Float64 = Float64(yq)
-  y::Int = Int(round(f))
-  q::Int = f*10 - y*10
-
-  return (y,q)
-end
+Tuple{Int,Int}(ym::YearMonth)::Tuple{Int,Int} = (ym.y, ym.m)
 
 #allows for adding quarters
-function +(yq::YearQuarter, qadded::Int)::YearQuarter
-  (y::Int, q::Int) = yq
+function +(ym::YearMonth, madded::Integer)::YearMonth
+  (y₀::Int, m₀::Int) = Tuple{Int,Int}(ym)
 
-  y += (qadded) ÷ 4
-  rawq::Int = qadded - yadded * 4 + q #should be ∈ -2:7
 
-  #this handles the edge cases for the quarters
-  if (rawq > -3) && (rawq ≤ 0)
-    y -= 1
-    q = rawq + 4
-  elseif (1≤rawq) && (rawq≤4)
-    q = rawq
-  elseif (5≤rawq) && (rawq≤7)
-    y += 1
-    q = rawq - 4
-  else
-    @assert false
-  end
+  m::Int = (m₀ + madded) % 12
+  (m≤0) && (m+=12) #only allow positive months
 
-  return reinterpret(YearQuarter, y + q/10)
+  y::Int = (madded - (m-m₀)) ÷ 12 + y₀
+
+  @assert m-m₀ + 12*(y-y₀) == madded #this should never fail
+
+  return YearMonth(y,m)
 end
 
 #helper methods to build on the above
-+(qadded::Int, yq::YearQuarter)::YearQuarter = yq + qadded
--(yq::YearQuarter, qadded::Int)::YearQuarter = yq + (-1*qadded)
++(qadded::Int, yq::YearMonth)::YearMonth = ym + qadded
+-(ym::YearMonth, madded::Int)::YearMonth = ym + (-1*madded)
 
-#gets the number of quarters difference
-function -(yq1::YearQuarter, yq2::YearQuarter)::Int
-  (y1::Int, q1::Int) = yq1
-  (y2::Int, q2::Int) = yq2
 
-  Δy::Int = y1 - y2
-  Δq::Int = q1 - q2
+#gets the number of months difference
+function -(ym1::YearMonth, ym2::YearMonth)::Int
 
-  return Δy * 4 + Δq
+  Δy::Int = ym1.y - ym2.y
+  Δm::Int = ym1.m - ym2.m
+
+  return Δy * 12 + Δm
 end
 
-function testYearQuarter()
+#comparison operators (primary sorting functions, then operator symbols)
+isless(ym1::YearMonth, ym2::YearMonth) = ym1.y*100+ym1.m < ym2.y*100 + ym2.m#(ym1.y<ym2.y) || ((ym1.y==ym2.y) && (ym1.m<ym2.m))
+
+#<(ym1::YearMonth, ym2::YearMonth) = isless(ym1, ym2)
+#>(ym1::YearMonth, ym2::YearMonth) = isless(ym2, ym1)
+
+#≤(ym1::YearMonth, ym2::YearMonth) = isless(ym1, ym2) || isequal(ym1, ym2)
+#≥(ym1::YearMonth, ym2::YearMonth) = isless(ym2, ym1) || isequal(ym1, ym2)
+
+#convert back to a date format
+bom(ym::YearMonth)::Date = Date(ym.y, ym.m, 1)
+eom(ym::YearMonth)::Date = lastdayofmonth(boq(ym))
+
+Base.length(::YearPeriod) = 1
+Base.iterate(yp::YearPeriod) = yp
+Base.iterate(ym::YearPeriod, s::Integer) = nothing
+Base.Broadcast.broadcastable(yp::YearPeriod) = Ref(yp)
+
+function testYearMonth()
 
   #test the first constructor
-  yq1::YearQuarter = YearQuarter(1985,3)
+  ym1::YearMonth = YearMonth(1998,2)
   try
-    YearQuarter(1985,7)
+    YearMonth(1985,14)
     @assert false
   catch err
     (typeof(err)<:AssertionError) && error("Error catching invalid values in first constructor")
   end
 
   #test the second constructor
-  yq2::YearQuarter = YearQuarter(2000.4)
+  ym2::YearMonth = YearMonth(2008_04)
   try
-    YearQuarter(2000.05)
+    YearMonth(2000_14)
     @assert false
   catch err
     (typeof(err)<:AssertionError) && error("Error catching invalid values in 2nd constructor")
   end
 
-  println(yq1)
+  #test addition of quarters
+  for i ∈ 0:122
+    @assert (ym1 + i) == (ym2 - (122-i))
+  end
+
+  @assert ym2 - ym1 == 122
+  @assert ym1 < ym2
+  @assert ym2 > ym1
+  @assert ym2 ≥ ym1
+  @assert ym1 ≥ ym1
+
 end
 
-testYearQuarter()=#
+#@time for i ∈ 1:200_000
+#  testYearMonth()
+#end
+
+function testymperformance(N::Int)
+  ms::Vector{Int} = rand(1:12, N)
+  ys::Vector{Int} = rand(0:20, N) .+ 1990
+  addedmonths::Vector{Int} = rand(-120:120, N)
+  local tot::Int
+  local yms::Vector{YearMonth}
+  local dts::Vector{Date}
+
+  local addedMonths::Vector{Month} = (Month).(addedmonths)
+
+  benchym::YearMonth = YearMonth(2000,1)
+  benchdt::Date = Date(2000,1,1)
+
+  @time begin
+    yms = ((y::Int,m::Int)->YearMonth(y,m)).(ys,ms)
+    yms .= yms .+ addedmonths
+    tot = sum(yms .> benchym)
+    print("\nYearMonth: $tot values found in")
+  end
+
+  @time begin
+    dts = ((y::Int,m::Int)->Date(y,m,1)).(ys,ms)
+    dts .= dts .+ addedMonths
+    tot = sum(dts .> benchdt)
+    print("Date: $tot values found in")
+  end
+
+end
+
+testymperformance(100_000_000)

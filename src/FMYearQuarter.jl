@@ -1,9 +1,13 @@
-struct YearQuarter
+
+
+abstract type YearPeriod end
+
+struct YearQuarter <: YearPeriod
   y::UInt16
   q::UInt8
 
   function YearQuarter(y,q)
-    q == 1 || q==2 || q==3 || q==4 || error("Invalid YearQuarter $f")
+    q == 1 || q==2 || q==3 || q==4 || error("Invalid YearQuarter $y $q")
     return new(y,q)
   end
 end
@@ -32,31 +36,6 @@ Base.show(io::IO, yq::YearQuarter) = print(io, Float64(yq))
 
 #quick way to split the year quarter
 Tuple{Int,Int}(yq::YearQuarter)::Tuple{Int,Int} = (yq.y, yq.q)
-
-
-#allows for adding quarters
-function pold(yq::YearQuarter, qadded::Int)::YearQuarter
-  (y::Int, q::Int) = Tuple{Int,Int}(yq)
-
-  yadded::Int = (qadded) ÷ 4
-  y::Int += yadded
-  rawq::Int = qadded - yadded * 4 + q #should be ∈ -2:7
-
-  #this handles the edge cases for the quarters
-  if (rawq > -3) && (rawq ≤ 0)
-    y -= 1
-    q = rawq + 4
-  elseif (1≤rawq) && (rawq≤4)
-    q = rawq
-  elseif (5≤rawq) && (rawq≤7)
-    y += 1
-    q = rawq - 4
-  else
-    @assert false
-  end
-
-  return YearQuarter(y,q)
-end
 
 #allows for adding quarters
 function +(yq::YearQuarter, qadded::Int)::YearQuarter
@@ -87,12 +66,78 @@ function -(yq1::YearQuarter, yq2::YearQuarter)::Int
 end
 
 #comparison operators (primary sorting functions, then operator symbols)
-isequal(yq1::YearQuarter, yq2::YearQuarter) = (yq1.y==yq2.y) && (yq1.q==yq2.q)
-isless(yq1::YearQuarter, yq2::YearQuarter) = (yq1.y<yq2.y) || ((yq1.y==yq2.y) && (yq1.q<yq2.q))
+isless(yq1::YearQuarter, yq2::YearQuarter) = yq1.y*10+yq1.q < yq2.y*10 + yq2.q
 
-==(yq1::YearQuarter, yq2::YearQuarter) = isequal(yq1, yq2)
-<(yq1::YearQuarter, yq2::YearQuarter) = isless(yq1, yq2)
->(yq1::YearQuarter, yq2::YearQuarter) = isless(yq2, yq1)
+boq(yq::YearQuarter)::Date = Date(yq.y, (yq.q-1)*3,1)
+eoq(yq::YearQuarter)::Date = lastdayofquarter(boq(yq))
 
-≤(yq1::YearQuarter, yq2::YearQuarter) = isless(yq1, yq2) || isequal(yq1, yq2)
-≥(yq1::YearQuarter, yq2::YearQuarter) = isless(yq2, yq1) || isequal(yq1, yq2)
+
+##################################Year-Month#####################
+struct YearMonth <: YearPeriod
+  y::UInt16
+  m::UInt8
+
+  function YearMonth(y,m)
+    (m≥1 && m≤12) || error("Invalid YearMonth $y $m")
+    return new(y,m)
+  end
+end
+
+#creates a year month from yyyymm date style
+function YearMonth(i::Integer)::YearMonth
+  local y::UInt16
+  local m::UInt8
+
+  (i>1000_00 && i<10000_00) || error("Invalid YearMonth $i")
+  (y,m) = (i ÷ 100, i % 100)
+
+  return YearMonth(y,m)
+end
+
+#fallback in case we need these
+Int(ym::YearMonth)::Int = ym.y*100 + ym.m
+Base.show(io::IO, ym::YearMonth) = print(io, "$(ym.y)_$(ym.m)")
+
+#quick way to split the year quarter
+Tuple{Int,Int}(ym::YearMonth)::Tuple{Int,Int} = (ym.y, ym.m)
+
+#allows for adding quarters
+function +(ym::YearMonth, madded::Integer)::YearMonth
+  (y₀::Int, m₀::Int) = Tuple{Int,Int}(ym)
+
+
+  m::Int = (m₀ + madded) % 12
+  (m≤0) && (m+=12) #only allow positive months
+
+  y::Int = (madded - (m-m₀)) ÷ 12 + y₀
+
+  @assert m-m₀ + 12*(y-y₀) == madded #this should never fail
+
+  return YearMonth(y,m)
+end
+
+#helper methods to build on the above
++(qadded::Int, yq::YearMonth)::YearMonth = ym + qadded
+-(ym::YearMonth, madded::Int)::YearMonth = ym + (-1*madded)
+
+
+#gets the number of months difference
+function -(ym1::YearMonth, ym2::YearMonth)::Int
+
+  Δy::Int = ym1.y - ym2.y
+  Δm::Int = ym1.m - ym2.m
+
+  return Δy * 12 + Δm
+end
+
+#comparison operators (primary sorting functions, then operator symbols)
+isless(ym1::YearMonth, ym2::YearMonth) = ym1.y*100+ym1.m < ym2.y*100 + ym2.m
+
+#convert back to a date format
+bom(ym::YearMonth)::Date = Date(ym.y, ym.m, 1)
+eom(ym::YearMonth)::Date = lastdayofmonth(boq(ym))
+
+Base.length(::YearPeriod) = 1
+Base.iterate(yp::YearPeriod) = yp
+Base.iterate(ym::YearPeriod, s::Integer) = nothing
+Base.Broadcast.broadcastable(yp::YearPeriod) = Ref(yp)

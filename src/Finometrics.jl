@@ -20,7 +20,8 @@ using  DataFrames, Distributions, StatsBase, GLM, CategoricalArrays,
   Dates, NLopt, ForwardDiff, Formatting, TexTables, DataStructures,
   LinearAlgebra
 
-import Base: +, -, ==, >, <, ≥, ≤, isless, isequal, push!, length
+import Base: +, -, ==, >, <, ≥, ≤, isless, isequal
+import Base: push!, length, iterate, broadcastable
 
 #######################MACROS###################
 #useful macro for conditionally running things in parallel
@@ -117,7 +118,13 @@ export FMLM, #Regression methods
   ∞,
 
   YearQuarter,
-  MYearQuarter
+  MYearQuarter,
+  YearMonth,
+  MYearMonth,
+  eom,
+  bom,
+  eoq,
+  boq
 
 
 ##################Custom types
@@ -185,6 +192,8 @@ include("FMRegBroken2SLS.jl")
 
 #type is derived from a user-defined type
 const MYearQuarter = Union{YearQuarter, Missing}
+const MYearMonth = Union{YearMonth, Missing}
+
 
 
 end
