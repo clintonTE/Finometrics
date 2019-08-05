@@ -135,7 +135,7 @@ isless(ym1::YearMonth, ym2::YearMonth) = ym1.y*100+ym1.m < ym2.y*100 + ym2.m
 
 #convert back to a date format
 bom(ym::YearMonth)::Date = Date(ym.y, ym.m, 1)
-eom(ym::YearMonth)::Date = lastdayofmonth(boq(ym))
+eom(ym::YearMonth)::Date = lastdayofmonth(bom(ym))
 
 Base.length(::YearPeriod) = 1
 Base.iterate(yp::YearPeriod) = yp
