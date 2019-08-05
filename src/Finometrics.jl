@@ -101,7 +101,8 @@ export FMLM, #Regression methods
   FMSpecs, #FMSpecs
   computeFMLMresults!,
 
-  NDict,#Exported types
+  NBool, #Exported types
+  NDict,
   NString,
   NSymbol,
   NType,
