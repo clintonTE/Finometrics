@@ -135,6 +135,7 @@ const FMData = Union{Float64,Int,Date,Symbol, CategoricalValue, Missing, Nothing
 abstract type FMModel end
 
 ###Convenience Types for Export
+const NBool = Union{Nothing, Symbol}
 const NSymbol = Union{Nothing, Symbol}
 const NType = Union{Nothing, Type}
 const NString = Union{Nothing, String}
