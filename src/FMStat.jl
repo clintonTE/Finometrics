@@ -354,17 +354,19 @@ RMS(v1::Vector{Float64}, v2::Vector{Float64})::Float64 =
 #Takes the prop percentile value, and replaces all lower values with that value
 #Then takes the (1-prop) percentile value, and replaces all higher values with that value
 #All calculations skip missing
-function winsorize!(target::AbstractVector; prop::Float64 = 0.0)::Nothing
-  local vcomplete::T where T <:typeof(target)
+function winsorize!(target::AbstractVector{T};
+    prop::Float64 = 0.0, sorted::Bool = false)::Nothing where T <: Any
 
-  if Missing <: eltype(target)
-    vcomplete =  target[(!ismissing).(target)] #don't trust how quantile handles missing
+  local vcomplete::SubArray{T,1}
+
+  if Missing <: T
+    vcomplete =  view(target, (!ismissing).(target)) #don't trust how quantile handles missing
   else
     vcomplete=target
   end
 
-  local minval::Float64 = quantile(vcomplete, prop)
-  local maxval::Float64 = quantile(vcomplete, 1.0 - prop)
+  local minval::Float64 = quantile(vcomplete, prop, sorted=sorted)
+  local maxval::Float64 = quantile(vcomplete, 1.0 - prop, sorted=sorted)
 
   target .= (f::MFloat64 -> max(minval, min(f,maxval))).(target)
   return nothing

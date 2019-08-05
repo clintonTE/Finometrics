@@ -17,8 +17,7 @@ end=#
 ##################Dependencies
 
 using  DataFrames, Distributions, StatsBase, GLM, CategoricalArrays,
-  Dates, NLopt, ForwardDiff, Formatting, TexTables, DataStructures,
-  LinearAlgebra
+  Dates, NLopt, ForwardDiff, Formatting, DataStructures, LinearAlgebra
 
 import Base: +, -, ==, >, <, ≥, ≤, isless, isequal
 import Base: push!, length, iterate, broadcastable
