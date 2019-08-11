@@ -89,6 +89,7 @@ export FMLM, #Regression methods
 
   FMΦInv, #FMNumerical
   FMΦ,
+  dfsort!,
 
   VAR, #FMVAR
   lagDF!,

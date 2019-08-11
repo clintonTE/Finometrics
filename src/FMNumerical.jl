@@ -144,3 +144,20 @@ function ANotBTest(N::Int = 1_000_000)
   @time setdiff(A,B) #for comparison
   @time ANotB(A,B, sort=true)
 end
+
+function dfsort!(df::DataFrame, sorts::Vector{Symbol}; threaded::Bool = false)::Nothing
+
+  firstsort::Symbol = sorts[1]
+  sort!(df, firstsort)
+  (length(sorts) == 1) && (return df)
+
+  finalsort::Vector{Symbol} = sorts[2:end]
+
+  sdfs::GroupedDataFrame = groupby(df, firstsort)
+  @mpar threaded for i ∈ 1:length(sdfs)
+    sdf::SubDataFrame = sdfs[i]
+    sdf .= sort(sdf, finalsort)
+  end
+
+  return nothing
+end
