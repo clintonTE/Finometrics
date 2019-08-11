@@ -3,7 +3,7 @@ using DataFrames, Revise, Dates
 #NInt = Union{Nothing, Int} #NOTE: consider deleting this later
 import Base: +, -, ==, >, <, ≥, ≤, length, isless, isequal
 
-
+using Finometrics
 #=using Finometrics
 using Revise
 
@@ -272,8 +272,6 @@ end
 
 
 
-
-
 function testsorts(N::Int = 10_000_000)
   local df::DataFrame
   local dfs1::DataFrame
@@ -303,7 +301,7 @@ function testsorts(N::Int = 10_000_000)
 
   dfs3 = deepcopy(df)
   print("time sort3: ")
-  @time fmsort!(dfs3, [:rid, :dt, :rid2], threaded=true)
+  @time sortdf!(dfs3, [:rid, :dt, :rid2], threaded=true)
 
   dfs4 = deepcopy(df)
   print("time sort4: ")
@@ -327,4 +325,4 @@ end
 
 testsorts(1_000_000)
 
-testymperformance(100_000_000)
+#testymperformance(100_000_000)

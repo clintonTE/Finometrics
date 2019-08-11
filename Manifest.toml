@@ -58,15 +58,15 @@ uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
 version = "2.1.0"
 
 [[DataAPI]]
-git-tree-sha1 = "891a09f4f90361a28d0391c104a65c0202e22624"
+git-tree-sha1 = "8903f0219d3472543fc4b2f5ebaf675a07f817c0"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
-version = "1.0.0"
+version = "1.0.1"
 
 [[DataFrames]]
 deps = ["CategoricalArrays", "Compat", "DataAPI", "InvertedIndices", "IteratorInterfaceExtensions", "Missings", "PooledArrays", "Printf", "REPL", "Reexport", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
-git-tree-sha1 = "12a96f70fc126f8a308eadd4eda843dfa630bbd4"
+git-tree-sha1 = "48ef38bd7cf0e8fd598bda981409eb6ef4b96cbd"
 uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-version = "0.19.1"
+version = "0.19.2"
 
 [[DataStructures]]
 deps = ["InteractiveUtils", "OrderedCollections"]
@@ -219,9 +219,9 @@ version = "0.3.2"
 
 [[ODBC]]
 deps = ["CategoricalArrays", "DataFrames", "Dates", "DecFP", "Libdl", "Printf", "Random", "Tables", "WeakRefStrings"]
-git-tree-sha1 = "7ffa3529931cc61f1d65357c92528cd97b59f4f4"
+git-tree-sha1 = "36337e5cc57a1152007f4f1f36a89d94a4c9c7de"
 uuid = "be6f12e9-ca4f-5eb2-a339-a4f995cc0291"
-version = "0.8.4"
+version = "0.8.5"
 
 [[OrderedCollections]]
 deps = ["Random", "Serialization", "Test"]
@@ -231,9 +231,9 @@ version = "1.1.0"
 
 [[PDMats]]
 deps = ["Arpack", "LinearAlgebra", "SparseArrays", "SuiteSparse", "Test"]
-git-tree-sha1 = "8b68513175b2dc4023a564cb0e917ce90e74fd69"
+git-tree-sha1 = "f99548922adf8dd5df2f02ab0063944201a12ed8"
 uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
-version = "0.9.7"
+version = "0.9.8"
 
 [[Parameters]]
 deps = ["OrderedCollections"]
