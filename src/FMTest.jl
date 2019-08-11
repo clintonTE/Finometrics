@@ -270,4 +270,61 @@ function testymperformance(N::Int)
 
 end
 
+
+
+
+
+function testsorts(N::Int = 10_000_000)
+  local df::DataFrame
+  local dfs1::DataFrame
+  local dfs2::DataFrame
+  local dfs3::DataFrame
+
+  df = DataFrame(rid = rand(1:10000,N))
+  df.dt = rand(Date(1980,1,1):Day(1):Date(2018,12,31),N)
+  df.rid2 = rand(1:1000,N)
+
+  dfs1 = deepcopy(df)
+  print("\ntime sort1: ")
+  @time sort!(dfs1, [:rid, :dt, :rid2])
+
+  Base.GC.gc()
+
+  dfs2 = deepcopy(df)
+  print("time sort2: ")
+  @time begin
+    sort!(dfs2, :rid)
+    dfs2s = groupby(dfs2, :rid)
+    Threads.@threads for i ∈ 1:length(dfs2s)
+      sdfs2::SubDataFrame = dfs2s[i]
+      sdfs2 .= sort(sdfs2, [:dt, :rid2])
+    end
+  end
+
+  dfs3 = deepcopy(df)
+  print("time sort3: ")
+  @time fmsort!(dfs3, [:rid, :dt, :rid2], threaded=true)
+
+  dfs4 = deepcopy(df)
+  print("time sort4: ")
+  @time dfs4 .= sort(dfs4, [:rid, :dt, :rid2])
+
+  @assert sum(dfs1.rid .== dfs2.rid)==N
+  @assert sum(dfs1.dt .== dfs2.dt)==N
+  @assert sum(dfs1.rid2 .== dfs2.rid2)==N
+
+  @assert sum(dfs1.rid .== dfs3.rid)==N
+  @assert sum(dfs1.dt .== dfs3.dt)==N
+  @assert sum(dfs1.rid2 .== dfs3.rid2)==N
+
+  @assert sum(dfs1.rid .== dfs4.rid)==N
+  @assert sum(dfs1.dt .== dfs4.dt)==N
+  @assert sum(dfs1.rid2 .== dfs4.rid2)==N
+
+  return nothing
+
+end
+
+testsorts(1_000_000)
+
 testymperformance(100_000_000)

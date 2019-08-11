@@ -145,7 +145,7 @@ function ANotBTest(N::Int = 1_000_000)
   @time ANotB(A,B, sort=true)
 end
 
-function dfsort!(df::DataFrame, sorts::Vector{Symbol}; threaded::Bool = false)::Nothing
+function sortdf!(df::DataFrame, sorts::Vector{Symbol}; threaded::Bool = false)::Nothing
 
   firstsort::Symbol = sorts[1]
   sort!(df, firstsort)
