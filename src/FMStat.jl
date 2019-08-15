@@ -365,8 +365,8 @@ function winsorize!(target::AbstractVector{T};
     vcomplete=target
   end
 
-  local minval::Float64 = quantile(vcomplete, prop, sorted=sorted)
-  local maxval::Float64 = quantile(vcomplete, 1.0 - prop, sorted=sorted)
+  local minval::Float64 = quantile(vcomplete, min(prop,1-prop), sorted=sorted)
+  local maxval::Float64 = quantile(vcomplete, max(prop,1-prop), sorted=sorted)
 
   target .= (f::MFloat64 -> max(minval, min(f,maxval))).(target)
   return nothing
