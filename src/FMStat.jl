@@ -453,7 +453,7 @@ function differencewithin!(df::DataFrame,
     laggednames=laggednames, sorted=sorted)
   for t ∈ 1:length(targets)
     df[!, differencednames[t]] = df[!, targets[t]] .- df[!, laggednames[t]]
-    deletelag && deletecols!(df, laggednames[t])
+    deletelag && select!(df, Not(laggednames[t]))
   end
 
   return nothing
