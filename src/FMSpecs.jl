@@ -41,13 +41,13 @@ function FMSpecs(sizehint::NInt = nothing,
 end
 
 Base.show(io::IO, fs::FMSpecs) = print(io, "N: $(fs.N)
-  specnames: $(specnames)
-  yspecs: $(yspecs)
-  xspecs: $(xspecs)
-  xnames: $(xnames)
-  withinspecs: $(withinspecs)
-  clusterspecs: $(clusterspecs)
-  results: $(results)")
+  specnames: $(fs.specnames)
+  yspecs: $(fs.yspecs)
+  xspecs: $(fs.xspecs)
+  xnames: $(fs.xnames)
+  withinspecs: $(fs.withinspecs)
+  clusterspecs: $(fs.clusterspecs)
+  results: $(fs.results)")
 
 #this applies the results function to each specification
 function computeFMLMresults!(dfs::Vector{T}, specs::FMSpecs;
