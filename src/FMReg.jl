@@ -160,7 +160,7 @@ OUT: A FMLM object
 NOTE: RHS expression must be ordered with factors last, otherwise
     the factor names will be incorrect =#
 function FMLM(df::AbstractDataFrame,  XExpr::T, YSym::Symbol;
-    XNames::Vector{Symbol}=[Symbol(:Intercept)], YName::Symbol=:Y,
+    XNames::Vector{Symbol}=[Symbol("Intercept")], YName::Symbol=:Y,
     containsmissings::Bool=true, withinSym::V = nothing, clusterSym::R = nothing,
         fixedEffectsSym::NSymbol = nothing)::FMLM  where {
         T <: FMExpr, V<:Union{Symbol,Nothing}, R<:Union{Symbol, Nothing}}
@@ -247,7 +247,7 @@ end
 #transforms the data using the within estimator, including an adjustment to dof
 function FMLM(X::Matrix{Float64}, Y::Vector{Float64}, within::Vector{W};
     clusters::Vector{C} = [nothing],
-    XNames::Vector{Symbol} = Symbol.(:X, 1:size(X,2)),
+    XNames::Vector{Symbol} = (Symbol).(:X, 1:size(X,2)),
     YName::Symbol = :Y)::FMLM where {W<:FMData, C<:FMData}
 
 
