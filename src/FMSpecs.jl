@@ -16,6 +16,8 @@ struct FMSpecs{T<:Any}
   results::Vector{T}
 end
 
+
+
 #creates the bare constructor
 function FMSpecs(sizehint::NInt = nothing,
     ::Type{T} = FMLM;
@@ -38,6 +40,14 @@ function FMSpecs(sizehint::NInt = nothing,
   return FMSpecs{T}(Ref{Int}(0), aggfunc,  specvector...)
 end
 
+Base.show(io::IO, fs::FMSpecs) = print(io, "N: $(fs.N)
+  specnames: $(specnames)
+  yspecs: $(yspecs)
+  xspecs: $(xspecs)
+  xnames: $(xnames)
+  withinspecs: $(withinspecs)
+  clusterspecs: $(clusterspecs)
+  results: $(results)")
 
 #this applies the results function to each specification
 function computeFMLMresults!(dfs::Vector{T}, specs::FMSpecs;
