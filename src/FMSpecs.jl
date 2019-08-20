@@ -50,8 +50,8 @@ Base.show(io::IO, fs::FMSpecs) = print(io, "N: $(fs.N)
   results: $(fs.results)")
 
 #this applies the results function to each specification
-function computeFMLMresults!(dfs::Vector{T}, specs::FMSpecs;
-    parallel::Bool=false, containsmissings::Bool=true)::Nothing where T<:AbstractDataFrame
+function computeFMLMresults!(dfs::Union{GroupedDataFrame, Vector{SubDataFrame}, Vector{DataFrame}},
+    specs::FMSpecs; parallel::Bool=false, containsmissings::Bool=true)::Nothing where T<:AbstractDataFrame
 
   #make sure the dimensions are corred
   (specs.N[] == length(specs.specnames) &&
