@@ -4,7 +4,7 @@
 #helper function  to get the model matrix from a dataframe given a formula
 #IN: A dataframe and formula object
 #OUT: the model matrix
-function getModelMatrix(df::T, f::Formula)::Matrix{Float64} where
+function getModelMatrix(df::T, f::FormulaTerm)::Matrix{Float64} where
   T <: AbstractDataFrame
   return ModelMatrix(ModelFrame(f, df)).m
 end
@@ -38,7 +38,7 @@ end
 #helper function to create a one-sided formula given an expression
 #IN: an expression and dataframe
 #OUT: A one-sided formula object
-function get1SidedFormula(RHS::T)::Formula where
+function get1SidedFormula(RHS::T)::FormulaTerm where
   {T <: FMExpr}
 
   LHS::Nothing = nothing
