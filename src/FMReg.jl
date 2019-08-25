@@ -21,6 +21,15 @@ function getModelMatrix(df::T, exp::V)::Matrix{Float64} where
   return getModelMatrix(df, get1SidedFormula(exp))
 end
 
+
+#helper function to create a one-sided formula given an expression
+#IN: an expression and dataframe
+#OUT: A one-sided formula object
+function get1SidedFormula(RHS::T)::FormulaTerm where
+  {T <: FMExpr}
+  return @eval(@formula( ~ $RHS))
+end
+
 #helper function  to get the list of symbols in an expression
 #IN: A dataframe and a string object, typically representing a formula
 #OUT: a vector of symbols in the string object
@@ -35,14 +44,6 @@ function getSymbolsFromExpr(exp::V)::Vector{Symbol} where {V <: FMExpr}
 end
 
 
-#helper function to create a one-sided formula given an expression
-#IN: an expression and dataframe
-#OUT: A one-sided formula object
-function get1SidedFormula(RHS::T)::FormulaTerm where
-  {T <: FMExpr}
-
-  return @eval(@formula(nothing ~ $RHS))
-end
 
 
 #drops missings form a dataframe
