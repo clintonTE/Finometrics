@@ -41,8 +41,7 @@ end
 function get1SidedFormula(RHS::T)::FormulaTerm where
   {T <: FMExpr}
 
-  LHS::Nothing = nothing
-  return @eval(@formula($LHS ~ $RHS))
+  return @eval(@formula(nothing ~ $RHS))
 end
 
 
