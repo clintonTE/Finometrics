@@ -19,6 +19,16 @@ end=#
 using  DataFrames, Distributions, StatsBase, GLM, CategoricalArrays,
   Dates, NLopt, ForwardDiff, Formatting, DataStructures, LinearAlgebra
 
+#=function testfunc()
+  local f::FormulaTerm
+
+  f = @formula(x ~ y)
+
+  println(f)
+end
+
+testfunc()=#
+
 import Base: +, -, ==, >, <, ≥, ≤, isless, isequal
 import Base: push!, length, iterate, broadcastable
 
