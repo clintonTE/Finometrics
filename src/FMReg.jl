@@ -10,25 +10,31 @@ function getModelMatrix(df::T, f::FormulaTerm)::Matrix{Float64} where
 end
 
 #Same as above but allows for an expression
-function getModelMatrix(df::T, exp::V)::Matrix{Float64} where
+function getModelMatrix(df::T, rhs::V)::Matrix{Float64} where
   {T <: AbstractDataFrame, V <: FMExpr}
 
   #special case which crashes Formula
-  if exp == Symbol("")
+  if rhs == Symbol("")
     return ones(Float64,size(df,1),1)
   end
 
-  return getModelMatrix(df, get1SidedFormula(exp))
+  #WARNING: This is a HACK! Replace with `nothing` or something else (See StatsModels github)
+  #or just redo the whole thing in the GLM framework
+  lhs_hack::Symbol = names(df)[1]
+  f::FormulaTerm = @eval(@formula($lhs_hack ~ $rhs))
+
+  return getModelMatrix(df, f)
 end
 
 
 #helper function to create a one-sided formula given an expression
 #IN: an expression and dataframe
 #OUT: A one-sided formula object
-function get1SidedFormula(RHS::T)::FormulaTerm where
+#WARNING: Broken! if everything works drop this
+#=function get1SidedFormula(RHS::T)::FormulaTerm where
   {T <: FMExpr}
-  return @eval(@formula(identity(1) ~ $RHS)) #WARNING: THIS IS A HACK!!!!
-end
+  return @eval(@formula(nothing ~ $RHS)) #WARNING: THIS IS A HACK!!!!
+end=#
 
 #helper function  to get the list of symbols in an expression
 #IN: A dataframe and a string object, typically representing a formula

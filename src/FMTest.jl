@@ -12,11 +12,13 @@ const FMExpr = Union{Symbol,Expr,Nothing}
 function getModelMatrix(df::T, f::FormulaTerm)::Matrix{Float64} where
   T <: AbstractDataFrame
 
-  return ModelMatrix(ModelFrame(f, df, model=LinearModel)).m
+  mf::ModelFrame = ModelFrame(f, df)
+  #println("frame created")
+  return ModelMatrix(mf).m
 end
 
 #Same as above but allows for an expression
-function getModelMatrix(df::T, exp::V)::Matrix{Float64} where
+function getModelMatrix(df::T, rhs::V)::Matrix{Float64} where
   {T <: AbstractDataFrame, V <: FMExpr}
 
   #special case which crashes Formula
@@ -24,7 +26,12 @@ function getModelMatrix(df::T, exp::V)::Matrix{Float64} where
     return ones(Float64,size(df,1),1)
   end
 
-  return getModelMatrix(df, get1SidedFormula(exp))
+  #WARNING: This is a HACK! Replace with `nothing` or something else (See StatsModels github)
+  #or just redo the whole thing in the GLM framework
+  lhs_hack::Symbol = names(df)[1]
+  f::FormulaTerm = @eval(@formula($lhs_hack~ $rhs))
+
+  return getModelMatrix(df, f)
 end
 
 
@@ -34,19 +41,33 @@ end
 function get1SidedFormula(RHS::T)::FormulaTerm where
   {T <: FMExpr}
 
-  return @eval(@formula(identity(1) ~ $RHS)) #WARNING: THIS IS A HACK!!!!
+  return @eval(@formula(nothing ~ $RHS)) #BROKEN!
 end
 
-function testMM()
-  df = DataFrame(x = 1001:2000, y = rand(1000), z=rand(1000),
-  f = (i->Symbol(:q,i÷100)).(1:1000))
+function testMM(df::DataFrame, loops=1)
   #println(df)
-  x = getModelMatrix(df, :(x+y))
+  x = getModelMatrix(df, :(x+y+f))
 
-  println(x)
+  (loops==1) && display(x)
+
+  return sum(x)
 end
 
-testMM()
+function testMM(loops::Int; N::Int=1000, G::Int=50)
+  local tot::Float64 = 0.0
+
+  df = DataFrame(x = 1001:(1000+N), y = rand(N), z=rand(N),
+    f = (i->Symbol(:q,i÷(N ÷ G))).(1:N))
+
+  @time for i ∈ 1:loops
+    tot+=testMM(df, loops)/N/G
+    df.y .+= rand()
+  end
+
+  println(tot)
+end
+
+testMM(10, N=100, G=10)
 #=using Finometrics
 using Revise
 
