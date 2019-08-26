@@ -1,15 +1,47 @@
-using Revise, Dates, DataFrames
+using Revise, Dates, DataFrames, GLM
 #NSymbol = Union{Nothing, Symbol}
 #NInt = Union{Nothing, Int} #NOTE: consider deleting this later
 import Base: +, -, ==, >, <, ≥, ≤, length, isless, isequal
+import StatsModels: implicit_intercept
 
-include("Finometrics.jl")
+
+#include("Finometrics.jl")
 using Revise
+const FMExpr = Union{Symbol,Expr,Nothing}
+#  StatsModels.implicit_intercept(::Type{<:Any}) = true
+function getModelMatrix(df::T, f::FormulaTerm)::Matrix{Float64} where
+  T <: AbstractDataFrame
+
+  return ModelMatrix(ModelFrame(f, df, model=LinearModel)).m
+end
+
+#Same as above but allows for an expression
+function getModelMatrix(df::T, exp::V)::Matrix{Float64} where
+  {T <: AbstractDataFrame, V <: FMExpr}
+
+  #special case which crashes Formula
+  if exp == Symbol("")
+    return ones(Float64,size(df,1),1)
+  end
+
+  return getModelMatrix(df, get1SidedFormula(exp))
+end
+
+
+#helper function to create a one-sided formula given an expression
+#IN: an expression and dataframe
+#OUT: A one-sided formula object
+function get1SidedFormula(RHS::T)::FormulaTerm where
+  {T <: FMExpr}
+
+  return @eval(@formula(identity(1) ~ $RHS)) #WARNING: THIS IS A HACK!!!!
+end
 
 function testMM()
-  df = DataFrame(x = 1001:2000, y = 1:1000, f = (i->Symbol(:q,i÷100)).(1:1000))
+  df = DataFrame(x = 1001:2000, y = rand(1000), z=rand(1000),
+  f = (i->Symbol(:q,i÷100)).(1:1000))
   #println(df)
-  x = Finometrics.getModelMatrix(df, :(1+x+y+f))
+  x = getModelMatrix(df, :(x+y))
 
   println(x)
 end

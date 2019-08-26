@@ -6,7 +6,7 @@
 #OUT: the model matrix
 function getModelMatrix(df::T, f::FormulaTerm)::Matrix{Float64} where
   T <: AbstractDataFrame
-  return ModelMatrix(ModelFrame(f, df)).m
+  return ModelMatrix(ModelFrame(f, df, model=LinearModel)).m
 end
 
 #Same as above but allows for an expression
@@ -27,7 +27,7 @@ end
 #OUT: A one-sided formula object
 function get1SidedFormula(RHS::T)::FormulaTerm where
   {T <: FMExpr}
-  return @eval(@formula(1 ~ $RHS)) #WARNING: THIS IS A HACK!!!!
+  return @eval(@formula(identity(1) ~ $RHS)) #WARNING: THIS IS A HACK!!!!
 end
 
 #helper function  to get the list of symbols in an expression
