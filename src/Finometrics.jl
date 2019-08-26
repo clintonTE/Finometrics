@@ -17,7 +17,8 @@ end=#
 ##################Dependencies
 
 using  DataFrames, Distributions, StatsBase, GLM, CategoricalArrays,
-  Dates, NLopt, ForwardDiff, Formatting, DataStructures, LinearAlgebra
+  Dates, NLopt, ForwardDiff, Formatting, DataStructures,
+  LinearAlgebra, StatsModels
 
 #=function testfunc()
   local f::FormulaTerm
