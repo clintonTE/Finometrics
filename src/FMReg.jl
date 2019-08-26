@@ -27,7 +27,7 @@ end
 #OUT: A one-sided formula object
 function get1SidedFormula(RHS::T)::FormulaTerm where
   {T <: FMExpr}
-  return @eval(@formula(1 ~ $RHS))
+  return @eval(@formula(1 ~ $RHS)) #WARNING: THIS IS A HACK!!!!
 end
 
 #helper function  to get the list of symbols in an expression

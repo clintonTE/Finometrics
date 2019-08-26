@@ -7,11 +7,11 @@ include("Finometrics.jl")
 using Revise
 
 function testMM()
-  df = DataFrame(x = ones(1000), y = 1:1000, f = (i->Symbol(:q,i÷100).(1:1000)))
+  df = DataFrame(x = 1001:2000, y = 1:1000, f = (i->Symbol(:q,i÷100)).(1:1000))
+  #println(df)
+  x = Finometrics.getModelMatrix(df, :(1+x+y+f))
 
-  Finometrics.getModelMatrix(df, :(x+y))
-
-
+  println(x)
 end
 
 testMM()
