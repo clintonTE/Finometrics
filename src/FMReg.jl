@@ -6,7 +6,9 @@
 #OUT: the model matrix
 function getModelMatrix(df::T, f::FormulaTerm)::Matrix{Float64} where
   T <: AbstractDataFrame
-  return ModelMatrix(ModelFrame(f, df, model=LinearModel)).m
+  f = apply_schema(f, schema(f,df), StatisticalModel)
+  m = modelcols(f.rhs, df)
+  return m
 end
 
 #Same as above but allows for an expression
@@ -20,6 +22,7 @@ function getModelMatrix(df::T, rhs::V)::Matrix{Float64} where
 
   #WARNING: This is a HACK! Replace with `nothing` or something else (See StatsModels github)
   #or just redo the whole thing in the GLM framework
+  #Will be able to replace the LHS w/0 in subsequent versions
   lhs_hack::Symbol = names(df)[1]
   f::FormulaTerm = @eval(@formula($lhs_hack ~ $rhs))
 

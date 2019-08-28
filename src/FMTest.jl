@@ -8,8 +8,19 @@ import StatsModels: implicit_intercept
 #include("Finometrics.jl")
 using Revise
 const FMExpr = Union{Symbol,Expr,Nothing}
+
+macro mpar(cond, expr)
+  quote
+    if $(esc(cond))
+        :($(Threads.@threads($expr)))
+    else
+        :($($expr))
+    end
+  end
+end
+
 #  StatsModels.implicit_intercept(::Type{<:Any}) = true
-function getModelMatrix(df::T, f::FormulaTerm)::Matrix{Float64} where
+#=function getModelMatrix(df::T, f::FormulaTerm)::Matrix{Float64} where
   T <: AbstractDataFrame
 
   mf::ModelFrame = ModelFrame(f, df)
@@ -34,15 +45,31 @@ function getModelMatrix(df::T, rhs::V)::Matrix{Float64} where
   return getModelMatrix(df, f)
 end
 
-
-#helper function to create a one-sided formula given an expression
-#IN: an expression and dataframe
-#OUT: A one-sided formula object
-function get1SidedFormula(RHS::T)::FormulaTerm where
-  {T <: FMExpr}
-
-  return @eval(@formula(nothing ~ $RHS)) #BROKEN!
+function getModelMatrix(df::T, f::FormulaTerm)::Matrix{Float64} where
+  T <: AbstractDataFrame
+  f = apply_schema(f, schema(f,df), StatisticalModel)
+  m = modelcols(f.rhs, df)
+  return m
 end
+
+#Same as above but allows for an expression
+function getModelMatrix(df::T, rhs::V)::Matrix{Float64} where
+  {T <: AbstractDataFrame, V <: FMExpr}
+
+  #special case which crashes Formula
+  if rhs == Symbol("")
+    return ones(Float64,size(df,1),1)
+  end
+
+  #WARNING: This is a HACK! Replace with `nothing` or something else (See StatsModels github)
+  #or just redo the whole thing in the GLM framework
+  #Will be able to replace the LHS w/0 in subsequent versions
+  lhs_hack::Symbol = names(df)[1]
+  f::FormulaTerm = @eval(@formula($lhs_hack ~ $rhs))
+
+  return getModelMatrix(df, f)
+end
+
 
 function testMM(df::DataFrame, loops=1)
   #println(df)
@@ -67,7 +94,11 @@ function testMM(loops::Int; N::Int=1000, G::Int=50)
   println(tot)
 end
 
-testMM(10, N=100, G=10)
+testMM(10_000, N=1000, G=10)=#
+
+
+
+
 #=using Finometrics
 using Revise
 
