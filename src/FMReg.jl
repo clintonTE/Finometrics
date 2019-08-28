@@ -14,7 +14,7 @@ function getModelMatrix(df::T, f::FormulaTerm)::Matrix{Float64} where
 
   #f = apply_schema(f, schema(f,df), StatisticalModel)
   #m = modelcols(f.rhs, df)
-  
+
   m = ModelMatrix(ModelFrame(f, df)).m
   return m
 end
