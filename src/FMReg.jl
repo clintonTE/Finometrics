@@ -6,8 +6,16 @@
 #OUT: the model matrix
 function getModelMatrix(df::T, f::FormulaTerm)::Matrix{Float64} where
   T <: AbstractDataFrame
-  f = apply_schema(f, schema(f,df), StatisticalModel)
-  m = modelcols(f.rhs, df)
+
+  #*************WARNING WARNING WARNING WARNING WARNING
+  #replace the code below w/ the two lines above
+  #once the missing-value coding of numerical variables is fixed see
+  #https://github.com/JuliaStats/StatsModels.jl/issues/145
+
+  #f = apply_schema(f, schema(f,df), StatisticalModel)
+  #m = modelcols(f.rhs, df)
+  
+  m = ModelMatrix(ModelFrame(f, df)).m
   return m
 end
 
