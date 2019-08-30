@@ -1,6 +1,5 @@
 ######################IO################
 
-array2String(args...; keyargs...) = error("depreciated, replace w/ array2string")
 vec2String(args...; keyargs...) = error("Depreciated- replace with join")
 texTable(args...; keyargs...) = error("Depreciated- replace with textable")
 writeTexTable(args...; keyargs...) = error("Depreciated- replace with writetextable")
