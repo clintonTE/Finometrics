@@ -72,13 +72,15 @@ export FMLM, #Regression methods
   getNeweyWestFunc,
   getClustered!,
 
-  texTable, #IO Mthods
-  writeTables2File,
-  writeNakedTable,
-  array2String,
-  num2Str,
-  vec2String,
-  vbind,
+  textable, #IO Mthods
+  writetextable,
+  array2string,
+  num2str,
+  texTable, #WARNING: depreciated
+  writeTexTable, #WARNING: depreciated
+  array2String,  #WARNING: depreciated
+  num2Str, #WARNING: depreciated
+  vec2String, #WARNING: depreciated
 
   skewnessStat, #FMstat methods
   kurtosisStat,
@@ -100,6 +102,8 @@ export FMLM, #Regression methods
 
   FMΦInv, #FMNumerical
   FMΦ,
+  inSorted,
+  vbind,
 
   VAR, #FMVAR
   lagDF!,

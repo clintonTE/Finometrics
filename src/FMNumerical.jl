@@ -53,6 +53,7 @@ FMϕ(z::Real)::Real = sqrt2PiInv*exp(-z^2.0/2.0)
 
 
 #in-place binary search, returns only a boolean value
+#could be perhaps optimized 
 function inSorted(val::T, B::Vector{T})::Bool where T<:Any
 
 
@@ -143,4 +144,51 @@ function ANotBTest(N::Int = 1_000_000)
 
   @time setdiff(A,B) #for comparison
   @time ANotB(A,B, sort=true)
+end
+
+
+#vcats like with rbind in r
+function vbind(df1::AbstractDataFrame, df2::AbstractDataFrame)::AbstractDataFrame
+  #get info on what we are joining
+  fields1::Vector{Symbol} = names(df1)
+  fields2::Vector{Symbol} = names(df2)
+  allFields::Vector{Symbol} = union(fields1, fields2)
+
+  rows1::Int = size(df1,1)
+  rows2::Int = size(df2,1)
+
+  for f::Symbol ∈ setdiff(allFields, fields1)
+    origType::Type = eltype(df2[f])
+
+    if !(Missing <: origType) #in this case we need to promote the eltype
+      origType = Union{origType, Missing}
+      df2[f] = Vector{origType}(df2[f])
+    end
+
+    df1[ f] = Vector{origType}(missing, rows1)
+  end
+
+  for f::Symbol ∈ setdiff(allFields, fields2)
+    origType = eltype(df1[f])
+
+    if !(Missing <: origType) #in this case we need to promote the eltype
+      origType = Union{origType, Missing}
+      df1[f] = Vector{origType}(df1[f])
+    end
+
+    #println("origType: $origType")
+    df2[ f] = Vector{origType}(missing, rows2)
+  end
+
+  return [df1; df2]
+end
+
+#recursive version that works similar to vcat with the above stipulations
+function vbind(dfs::T...)::T where T<:AbstractDataFrame
+  if length(dfs) == 1
+    return dfs[1]
+  else
+    pivot::Int = length(dfs) ÷ 2
+    return vbind(vbind(dfs[1:pivot]...), vbind(dfs[(pivot+1):end]...))
+  end
 end
