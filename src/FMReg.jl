@@ -23,8 +23,8 @@ end
 function getModelMatrix(df::T, rhs::V)::Matrix{Float64} where
   {T <: AbstractDataFrame, V <: FMExpr}
 
-  #special case which crashes Formula
-  if rhs == Symbol("")
+  #special case of no covariates
+  if isnothing(rhs) #(rhs == Symbol(""))
     return ones(Float64,size(df,1),1)
   end
 
