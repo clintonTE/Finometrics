@@ -51,6 +51,7 @@ end=#
 #IN: A dataframe and a string object, typically representing a formula
 #OUT: a vector of symbols in the string object
 function getSymbolsFromExpr(exp::V)::Vector{Symbol} where {V <: FMExpr}
+  isnothing(exp) && return Vector{Symbol}() #special case with no focal var
   symStrings::Vector{String} = split(string(exp),
     ['|','=','~',' ','+','*','&',')','(','-'], keepempty=false)
 
@@ -477,7 +478,7 @@ function getNeweyWest!(X::Matrix{Float64}, xqr::FMQR, ε::Vector{Float64}, lag::
 
   #finally we have T[X'X]^-1S[X'X]^-1
   BLAS.gemm!('N','N',Float64(xqr.N), RRInvS, RRInv, 0.0, Σ)
-  #println("$(diag(Σ .* dofCorrect))")
+  #println("$(diag(Σ .* dofCorrect))")sasa
   return Σ .* dofCorrect
 end
 
