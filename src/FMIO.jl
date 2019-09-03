@@ -80,7 +80,7 @@ function textable(;
   widthdesccontent::Vector{Vector{Int}} = #contains the number of columns for each entry
     broadcast((i::Int)->ones(Int,length(desccontent[i])),1:length(desccontent)),
   colheadername::Vector{String} = ["" for i ∈ 1:length(colnames)],
-  alignmentstring::String = string(" l | ", join(["r" for i ∈ 1:length(desccontent[1])])))
+  alignmentstring::String = string(" l", join(["r" for i ∈ 1:length(desccontent[1])])))
 
   #size parameters for content
   numContentRows::Int = length(contentrownames)
