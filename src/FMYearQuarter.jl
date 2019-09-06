@@ -74,8 +74,8 @@ eoq(yq::YearQuarter)::Date = lastdayofquarter(boq(yq))
 
 ##################################Year-Month#####################
 struct YearMonth <: YearPeriod
-  y::UInt16
-  m::UInt8
+  y::Int16
+  m::Int8
 
   function YearMonth(y,m)
     (m≥1 && m≤12) || error("Invalid YearMonth $y $m")
@@ -85,8 +85,8 @@ end
 
 #creates a year month from yyyymm date style
 function YearMonth(i::Integer)::YearMonth
-  local y::UInt16
-  local m::UInt8
+  local y::Int16
+  local m::Int8
 
   (i>1000_00 && i<10000_00) || error("Invalid YearMonth $i")
   (y,m) = (i ÷ 100, i % 100)
