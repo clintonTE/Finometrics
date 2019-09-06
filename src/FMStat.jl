@@ -359,11 +359,11 @@ function winsorize!(target::AbstractVector{T};
 
   local vcomplete::SubArray{T,1}
 
-  if Missing <: T
+  #if Missing <: T
     vcomplete =  view(target, (!ismissing).(target)) #don't trust how quantile handles missing
-  else
-    vcomplete=target
-  end
+  #else
+  #  vcomplete=view(target, :)
+  #end
 
   local minval::Float64 = quantile(vcomplete, min(prop,1-prop), sorted=sorted)
   local maxval::Float64 = quantile(vcomplete, max(prop,1-prop), sorted=sorted)
