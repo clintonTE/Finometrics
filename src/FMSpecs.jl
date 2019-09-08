@@ -50,8 +50,9 @@ Base.show(io::IO, fs::FMSpecs) = print(io, "N: $(fs.N)
   results: $(fs.results)")
 
 #this applies the results function to each specification
-function computeFMLMresults!(dfs::Union{GroupedDataFrame, Vector{SubDataFrame}, Vector{DataFrame}},
-    specs::FMSpecs; parallel::Bool=false, containsmissings::Bool=true)::Nothing where T<:AbstractDataFrame
+function computeFMLMresults!(dfs::Union{S},
+    specs::FMSpecs{T}; parallel::Bool=false, containsmissings::Bool=true
+    )::Nothing where {S<:AbstractDataFrame, T<:Any}
 
   #make sure the dimensions are corred
   (specs.N[] == length(specs.specnames) &&
@@ -65,6 +66,7 @@ function computeFMLMresults!(dfs::Union{GroupedDataFrame, Vector{SubDataFrame}, 
   (specs.N[] == length(dfs)) && "Input df views dimenion mismatch:
     dfs length: $(length(dfs)), specs.N[]: $(specs.N[])"
 
+  results::Vector{T} = Vector{T}(undef, specs.N[])
   #runs the regressions
   #could conceivably parallelize this at some point
   @mpar parallel for i::Int ∈ 1:specs.N[]
@@ -72,11 +74,7 @@ function computeFMLMresults!(dfs::Union{GroupedDataFrame, Vector{SubDataFrame}, 
       withinSym = specs.withinspecs[i], clusterSym = specs.clusterspecs[i],
       XNames=specs.xnames[i], YName = specs.yspecs[i],
       containsmissings=containsmissings)
-
-    lock(spinlock)
-    push!(specs.results, specs.aggfunc(m))
-    unlock(spinlock)
-    
+    results[i] = specs.aggfunc(m)
   end
 
   return nothing
