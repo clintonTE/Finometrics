@@ -77,7 +77,7 @@ function computeFMLMresults!(dfs::S,
     results[i] = specs.aggfunc(m)
   end
 
-  (r->push!(specs.results, r)).(results)
+  (r::T->push!(specs.results, r)).(results)
 
   return nothing
 end
