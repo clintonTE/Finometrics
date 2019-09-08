@@ -174,6 +174,7 @@ const RegressionSS = Union{Nothing, Float64}
 const RegressionN = Union{Nothing, Int}
 
 ################Constants
+const spinlock = Threads.SpinLock()
 
 #shared cosntants
 const DEFAULT_STAR_LEGEND = "*p<0.1, **p<0.05, ***p<0.01"

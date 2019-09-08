@@ -73,7 +73,10 @@ function computeFMLMresults!(dfs::Union{GroupedDataFrame, Vector{SubDataFrame}, 
       XNames=specs.xnames[i], YName = specs.yspecs[i],
       containsmissings=containsmissings)
 
+    lock(spinlock)
     push!(specs.results, specs.aggfunc(m))
+    unlock(spinlock)
+    
   end
 
   return nothing
