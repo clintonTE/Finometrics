@@ -52,7 +52,7 @@ Base.show(io::IO, fs::FMSpecs) = print(io, "N: $(fs.N)
 #this applies the results function to each specification
 function computeFMLMresults!(dfs::Vector{S},
     specs::FMSpecs{T}; parallel::Bool=false, containsmissings::Bool=true
-    )::Nothing where {S<:Union{AbstractDataFrame, GroupedDataFrame}, T<:Any}
+    )::Nothing where {S<:Union{Vector{SubDataFrame}, Vector{DataFrame}, GroupedDataFrame}, T<:Any}
 
   #make sure the dimensions are corred
   (specs.N[] == length(specs.specnames) &&
