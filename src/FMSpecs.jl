@@ -50,7 +50,7 @@ Base.show(io::IO, fs::FMSpecs) = print(io, "N: $(fs.N)
   results: $(fs.results)")
 
 #this applies the results function to each specification
-function computeFMLMresults!(dfs::Vector{S},
+function computeFMLMresults!(dfs::S,
     specs::FMSpecs{T}; parallel::Bool=false, containsmissings::Bool=true
     )::Nothing where {S<:Union{Vector{SubDataFrame}, Vector{DataFrame}, GroupedDataFrame}, T<:Any}
 
