@@ -37,7 +37,6 @@ function getModelMatrix(df::T, rhs::V)::Matrix{Float64} where
   return getModelMatrix(df, f)
 end
 
-
 #helper function to create a one-sided formula given an expression
 #IN: an expression and dataframe
 #OUT: A one-sided formula object
