@@ -157,7 +157,7 @@ function FMLM(X::Matrix{Float64}, Y::Vector{Float64}; clusters::Vector{C}=[nothi
         qrtype::Type = Matrix{Float64})::FMLM where C<:FMData
     local xqr::FMQR
 
-    xqr = FMQR(T, X)
+    xqr = FMQR(qrtype, X)
 
     β::Vector{Float64} = Vector{Float64}(undef, xqr.K)
     getCoeff!(xqr,Y,β)
