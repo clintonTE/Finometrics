@@ -82,7 +82,6 @@ The X matrix has dimensions of NxK. R is the inverse, stored
 for computational efficiency.=#
 
 struct FMQR
-  X::Matrix{Float64}
   Q::Matrix{Float64}
   R::Matrix{Float64}
 
@@ -94,14 +93,15 @@ end
 #helper method which takes the inverse of the R matrix (which is used in a lot)
 #IN: X matrix and its Q R decomposition in matrix form
 #OUT: FMQR Object
-function FMQR(X::Matrix{Float64},Q::Matrix{Float64},R::Matrix{Float64};keepX=true)::FMQR
+function FMQR(X::Matrix{Float64},
+    Q::Matrix{Float64},
+    R::Matrix{Float64})::FMQR
   #=println("Keep: $keepX")
   println("X Size: $(size(X))")
   println("Q Size: $(size(Q))")
   println("R Size: $(size(R))")=#
   #display(
-  FMQR(keepX ? X : Matrix{Float64}(),
-    Q,
+  FMQR(Q,
     R,
     size(X,1),
     size(X,2),
@@ -111,17 +111,13 @@ end
 #main constructor for the FMQR object
 #IN: X Matrix
 #OUT: FMQR object
-function FMQR(X::Matrix{Float64}; keepX::Bool = true)::FMQR
+function FMQR(::Type{T}, X::Matrix{Float64})::FMQR where T
   local Q::Matrix{Float64}
   local R::Matrix{Float64}
-  local QRCompact::LinearAlgebra.QRCompactWY
+  local QRCompact
 
-  try
-    QRCompact = qr(X)
-  catch err
-    display(X)
-    error("Error with qr decomposition msg2389 error: $err")
-  end
+  QRCompact = qr(T(X))
+
 
   Q = Matrix(QRCompact.Q)
   R = Matrix(QRCompact.R)
@@ -129,9 +125,8 @@ function FMQR(X::Matrix{Float64}; keepX::Bool = true)::FMQR
   return FMQR(X,Q,R)
 end
 
-#default constructor to clear memory
-FMQR() = FMQR(Matrix{Float64}(),Matrix{Float64}(),Matrix{Float64}(),
-    0,0,Matrix{Float64}())::FMQR
+#default constructor, enables legacy compatability
+FMQR(X::Matrix{Float64})::Matrix{Float64} = FMQR(Matrix{Float64}, X)
 
 
 #####################FMLM Model Type#########################
@@ -158,9 +153,12 @@ end
 
 function FMLM(X::Matrix{Float64}, Y::Vector{Float64}; clusters::Vector{C}=[nothing],
         XNames::Vector{Symbol} = Symbol.(:X, 1:size(X,2)),
-        YName::Symbol = :Y, dof = size(X,1)-size(X,2))::FMLM where C<:FMData
+        YName::Symbol = :Y, dof = size(X,1)-size(X,2),
+        qrtype::Type = Matrix{Float64})::FMLM where C<:FMData
+    local xqr::FMQR
 
-    xqr::FMQR = FMQR(X, keepX=false)
+    xqr = FMQR(T, X)
+
     β::Vector{Float64} = Vector{Float64}(undef, xqr.K)
     getCoeff!(xqr,Y,β)
     ε::Vector{Float64} = Vector{Float64}(undef, xqr.N)
@@ -179,7 +177,8 @@ NOTE: RHS expression must be ordered with factors last, otherwise
 function FMLM(df::AbstractDataFrame,  XExpr::T, YSym::Symbol;
     XNames::Vector{Symbol}=[Symbol("Intercept")], YName::Symbol=:Y,
     containsmissings::Bool=true, withinSym::V = nothing, clusterSym::R = nothing,
-        fixedEffectsSym::NSymbol = nothing)::FMLM  where {
+        fixedEffectsSym::NSymbol = nothing,
+        qrtype::Type = Matrix{Float64})::FMLM  where {
         T <: FMExpr, V<:Union{Symbol,Nothing}, R<:Union{Symbol, Nothing}}
 
     #NOTE: Delete when code is fully updated
@@ -256,7 +255,7 @@ function FMLM(df::AbstractDataFrame,  XExpr::T, YSym::Symbol;
       #  println("flag3b")
         return FMLM(XModelMatrix,
             Vector{Float64}(dfSub[!, YSym]), clusters = clusters,
-            XNames=XNamesFull, YName=YName)
+            XNames=XNamesFull, YName=YName, qrtype=qrtype)
     end
 
 end
@@ -265,7 +264,8 @@ end
 function FMLM(X::Matrix{Float64}, Y::Vector{Float64}, within::Vector{W};
     clusters::Vector{C} = [nothing],
     XNames::Vector{Symbol} = (Symbol).(:X, 1:size(X,2)),
-    YName::Symbol = :Y)::FMLM where {W<:FMData, C<:FMData}
+    YName::Symbol = :Y,
+    qrtype::Type = Matrix{Float64})::FMLM where {W<:FMData, C<:FMData}
 
 
     #println("flag4")
@@ -305,7 +305,9 @@ function FMLM(X::Matrix{Float64}, Y::Vector{Float64}, within::Vector{W};
       Y[r] -= meanXY[withinCode[r],K+1]
     end
 
-    return FMLM(X, Y, clusters=clusters, XNames=XNames, YName=YName, dof = N - iN - K)
+    return FMLM(X, Y,
+      clusters=clusters, XNames=XNames, YName=YName,
+      dof = N - iN - K, qrtype=qrtype)
 end
 
 #this function calculates the Pearson correlation coefficient of the predicted values

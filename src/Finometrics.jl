@@ -20,6 +20,12 @@ using  DataFrames, Distributions, StatsBase, GLM, CategoricalArrays,
   Dates, NLopt, ForwardDiff, Formatting, DataStructures,
   LinearAlgebra, StatsModels
 
+try
+  using CuArrays
+catch
+  println("Note: CuArrays not installed")
+end  
+
 #=function testfunc()
   local f::FormulaTerm
 
