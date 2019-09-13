@@ -408,7 +408,7 @@ function lagwithin!(df::DataFrame,
           if subdf[i-lags, period] == cur - lags
             subdf[i,laggednames[t]] = subdf[i-lags, targets[t]]
           elseif lags ≠ 1 #now check the hard way (finding the lagged year), pointless if lags==1
-            location::NInt = findfirst(isequal(cur-lags, subdf[1:(i-1),period]))
+            location::NInt = findfirst(isequal(cur-lags), subdf[1:(i-1),period])
 
             #record the lagged value if it is available
             if !isnothing(location)
