@@ -96,6 +96,7 @@ end
 function FMQR(::Type{T}, X::M)::FMQR where {T<:AbstractMatrix, M<:AbstractMatrix}
   local Q::M
   local R::M
+  local Rinv::M
   local QRCompact
 
   if M == T
@@ -105,14 +106,16 @@ function FMQR(::Type{T}, X::M)::FMQR where {T<:AbstractMatrix, M<:AbstractMatrix
   end
 
 
-  Q = Matrix(QRCompact.Q)
-  R = Matrix(QRCompact.R)
+  R = QRCompact.R
 
+  #hack to get around a bug involving scalar operations when pulling the Q matrix
+  Q = T<:CuArray ? CuMatrix(QRCompact.Q) : QRCompact.Q
+  Rinv = T<:CuArray ? Matrix(R)\I : R\I
   return FMQR{M}(Q,
       R,
       size(X,1),
       size(X,2),
-      (R)\M(I,size(X,2),size(X,2)))
+      Rinv)
 end
 
 #default constructor, enables legacy compatability
@@ -146,7 +149,7 @@ end
 function FMLM(X::M, Y::V; clusters::Vector{C}=[nothing],
         XNames::Vector{Symbol} = Symbol.(:X, 1:size(X,2)),
         YName::Symbol = :Y, dof = size(X,1)-size(X,2),
-        qrtype::Type = Matrix{Float64})::FMLM where {
+        qrtype::Type = M)::FMLM where {
           M<:AbstractMatrix, V<:AbstractVector, C<:FMData}
     local xqr::FMQR
 
@@ -264,7 +267,7 @@ function FMLM(X::M, Y::V, within::AbstractVector{W};
     clusters::Vector{C} = [nothing],
     XNames::Vector{Symbol} = (Symbol).(:X, 1:size(X,2)),
     YName::Symbol = :Y,
-    qrtype::Type = Matrix{Float64})::FMLM where {
+    qrtype::Type = M)::FMLM where {
       W<:FMData, C<:FMData, M<:AbstractMatrix, V<:AbstractVector}
 
 
@@ -350,10 +353,7 @@ OUT: Writes and returns the projection matrix=#
 function project!(xqr::FMQR{M}, P::V)::Nothing where {M<:AbstractMatrix, V<:AbstractVector}
   #get the diagonal quickly
   #equivlenet to diag(Q*Q')
-  P .= 0.0
-  @fastmath for j::Int ∈ 1:xqr.K, i::Int ∈ 1:xqr.N
-    P[i] += xqr.Q[i,j] * xqr.Q[i,j]
-  end
+  P .= diag(xqr.Q*xqr.Q')
 
   return nothing
 
@@ -478,22 +478,24 @@ function getNeweyWest!(X::M, xqr::FMQR{M}, ε::V, lag::Int,
 
   #pre-allocate for the spectral matrix
 
-  Rv::M = M(undef, xqr.K, xqr.K) #pre-allocate working matrix
-  RRInv::M = BLAS.gemm('N', 'T', xqr.RInv, xqr.RInv) #this is equivelent to [X'X]^-1
+  #NOTE: we need to switch away from gpu arrays sooner due to the lagging
+  #that is, views don't seem to work properly on gpu matrices
   T::Type = eltype(M)
+  Rv::Matrix{T} = Matrix{T}(undef, xqr.K, xqr.K) #pre-allocate working matrix
+  RRInv::Matrix{T} = BLAS.gemm('N', 'T', xqr.RInv, xqr.RInv) #this is equivelent to [X'X]^-1
 
   #need to multiply through by the error
-  Xe::M = X .* ε
-  ST::M = BLAS.gemm('T','N',T(1.0/xqr.N), Xe, Xe)
+  Xe::Matrix{T} = X .* ε
+  ST::Matrix{T} = BLAS.gemm('T','N',T(1.0/xqr.N), Xe, Xe)
   for v::Int ∈ 1:lag
     #overwrites Rv with (1/N)R'R
     BLAS.gemm!('T', 'N', T(1.0/xqr.N), view(Xe, (v+1):(xqr.N), :),view(Xe, 1:(xqr.N-v), :), T(0.0), Rv)
     #Rv .= view(Xe, (v+1):(xqr.N), :)' * view(Xe, 1:(xqr.N-v), :) .* (1.0/xqr.N)
-    ST .+= (lag + 1 .- v)/(lag+1.) .* (Rv .+ Rv')
+    ST += (lag + 1 - v)/(lag+1.) .* (Rv .+ Rv')
   end
 
   #this is [X'X]^-1S=[R'R]^-1S
-  RRInvS::M = BLAS.gemm('N', 'N', RRInv, ST)
+  RRInvS::Matrix{T} = BLAS.gemm('N', 'N', RRInv, ST)
 
   #finally we have T[X'X]^-1S[X'X]^-1
   if M<:Matrix{Float64}
@@ -524,16 +526,16 @@ function getNeweyWestSlow(X::M, ε::V, lag::Int, dofCorrect::Float64
     )  where {M<:AbstractMatrix, V<:AbstractVector}
 
   N::Int, K::Int = size(X)
+  (M<:CuArray) && CuArrays.allowscalar(true) #don't care about performance here
 
   #first form the spectral matrix
 
   #initial value for spectral matrix
-  xxt::M = M(undef, K,K)
-  xxt = zeros(K,K)
+  xxt::Matrix = zeros(K,K)
   for t::Int ∈ 1:N
     xxt .+= (X[t, :] * X[t, :]') .* ε[t]^2
   end
-  ST::M =  xxt ./ N
+  ST::Matrix =  xxt ./ N
 
   #make the rest of the spectral matrix
   for v::Int ∈ 1:lag
@@ -545,9 +547,10 @@ function getNeweyWestSlow(X::M, ε::V, lag::Int, dofCorrect::Float64
     ST .+= (lag + 1. - v)/(lag + 1.) .* (xxt .+ xxt')
   end
 
-  XXInv::M = (X' * X) \ M(I,K,K)
+  XXInv::Matrix = Matrix(X' * X) \ I
 
   ret::Matrix = N*XXInv*ST* XXInv
+  (M<:CuArray) && CuArrays.allowscalar(false) #don't care about performance here
   return ret * dofCorrect
 end
 
@@ -668,10 +671,10 @@ function getModWhiteΣ!(xqr::FMQR{M}, ε::V,
   RInvQΛ::M = QRtInv'
 
   #loop to scale the matrix by Λ (modified part of modified white)
-  @fastmath for j ∈ 1:xqr.N, i∈1:xqr.K
+  #=@fastmath for j ∈ 1:xqr.N, i∈1:xqr.K
     RInvQΛ[i,j] *= Λ[j]
-  end
-
+  end=#
+  RInvQΛ *= Diagonal(Λ) #hopefully this is fast
   T::Type = eltype(M)
 
   if M<:Matrix{Float64}
@@ -698,11 +701,16 @@ Output should be identical to the standard methods
 IN: Independent variable X matrix
 OUT: Returns the covariance matrix=#
 function getModWhiteΣSlow(X::M, ε::V, dofcorrect::Float64) where {M<:AbstractMatrix, V<:AbstractVector}
-  XXInv::M = Matrix(X' * X)\I
 
+  #do this since we only care about clarity (and not performance)
+  (M<:CuArray) && CuArrays.allowscalar(true)
+
+  XXInv::M = Matrix(X' * X)\I
 
   P::M = X * (XXInv) * X'
   Σ::M = XXInv * X' * diagm(ε  ./ (1.0 .- diag(P))) .^ 2.0 * X * XXInv
+
+  (M<:CuArray) && CuArrays.allowscalar(false)
 
   if M<:Matrix{Float64}
     return Σ .* dofcorrect

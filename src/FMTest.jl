@@ -382,7 +382,8 @@ function rapidreg(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
 end
 #LMtest(CuMatrix{Float32}, CuVector{Float32}, N=1_000)
 #@time LMtest(CuMatrix{Float32}, CuVector{Float32}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
-@time LMtest(Matrix{Float32}, Vector{Float32}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
+#CuArrays.allowscalar(false)
+#@time LMtest(CuMatrix{Float32}, CuVector{Float32}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
 
-#@time rapidreg(Matrix{Float32}, Vector{Float32}, iter=700, N=2_000_000, K=200,
-#  qrtype=Matrix{Float32}) #, qrtype=CuMatrix{Float32})
+@time rapidreg(CuMatrix{Float32}, CuVector{Float32}, iter=700, N=2_000_000, K=200,
+  qrtype=CuMatrix{Float32}) #, qrtype=CuMatrix{Float32})
