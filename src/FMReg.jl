@@ -172,7 +172,7 @@ function FMLM(df::AbstractDataFrame,  XExpr::FMExpr, YSym::Symbol,
     ::Type{M} = Matrix{Float64}, ::Type{V} = Vector{Float64};
     XNames::Vector{Symbol}=[Symbol("Intercept")], YName::Symbol=:Y,
     containsmissings::Bool=true, withinSym::NSymbol = nothing, clusterSym::NSymbol = nothing,
-        fixedEffectsSym::NSymbol = nothing)::FMLM  where {
+        fixedEffectsSym::NSymbol = nothing, qrtype::Type = M)::FMLM  where {
          M<:AbstractMatrix, V<:AbstractVector}
 
     local XModelMatrix::M
