@@ -24,7 +24,7 @@ try
   using CuArrays
 catch
   println("Note: CuArrays not installed")
-end  
+end
 
 #=function testfunc()
   local f::FormulaTerm
@@ -137,6 +137,9 @@ export FMLM, #Regression methods
   MSymbol,
   MDate,
   ∞,
+
+  CU32,
+  CU64,
 
   YearQuarter,
   MYearQuarter,

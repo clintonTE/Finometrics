@@ -222,83 +222,6 @@ function testYearQuarter()
   #println(Float64(yq1))
 end=#
 
-abstract type YearPeriod end
-##################################Year-Month#####################
-struct YearMonth <: YearPeriod
-  y::UInt16
-  m::UInt8
-
-  function YearMonth(y,m)
-    (m≥1 && m≤12) || error("Invalid YearMonth $y $m")
-    return new(y,m)
-  end
-end
-
-#creates a year month from yyyymm date style
-function YearMonth(i::Integer)::YearMonth
-  local y::UInt16
-  local m::UInt8
-
-  (i>1000_00 && i<10000_00) || error("Invalid YearMonth $i")
-  (y,m) = (i ÷ 100, i % 100)
-
-  return YearMonth(y,m)
-end
-
-#fallback in case we need these
-Int(ym::YearMonth)::Int = ym.y*100 + ym.m
-Base.show(io::IO, ym::YearMonth) = print(io, "$(ym.y)_$(ym.m)")
-
-#quick way to split the year quarter
-Tuple{Int,Int}(ym::YearMonth)::Tuple{Int,Int} = (ym.y, ym.m)
-
-#allows for adding quarters
-function +(ym::YearMonth, madded::Integer)::YearMonth
-  (y₀::Int, m₀::Int) = Tuple{Int,Int}(ym)
-
-
-  m::Int = (m₀ + madded) % 12
-  (m≤0) && (m+=12) #only allow positive months
-
-  y::Int = (madded - (m-m₀)) ÷ 12 + y₀
-
-  @assert m-m₀ + 12*(y-y₀) == madded #this should never fail
-
-  return YearMonth(y,m)
-end
-
-#helper methods to build on the above
-+(qadded::Int, yq::YearMonth)::YearMonth = ym + qadded
--(ym::YearMonth, madded::Int)::YearMonth = ym + (-1*madded)
-
-
-#gets the number of months difference
-function -(ym1::YearMonth, ym2::YearMonth)::Int
-
-  Δy::Int = ym1.y - ym2.y
-  Δm::Int = ym1.m - ym2.m
-
-  return Δy * 12 + Δm
-end
-
-#comparison operators (primary sorting functions, then operator symbols)
-isless(ym1::YearMonth, ym2::YearMonth) = ym1.y*100+ym1.m < ym2.y*100 + ym2.m#(ym1.y<ym2.y) || ((ym1.y==ym2.y) && (ym1.m<ym2.m))
-
-#<(ym1::YearMonth, ym2::YearMonth) = isless(ym1, ym2)
-#>(ym1::YearMonth, ym2::YearMonth) = isless(ym2, ym1)
-
-#≤(ym1::YearMonth, ym2::YearMonth) = isless(ym1, ym2) || isequal(ym1, ym2)
-#≥(ym1::YearMonth, ym2::YearMonth) = isless(ym2, ym1) || isequal(ym1, ym2)
-
-#convert back to a date format
-bom(ym::YearMonth)::Date = Date(ym.y, ym.m, 1)
-eom(ym::YearMonth)::Date = lastdayofmonth(boq(ym))
-
-Base.length(::YearPeriod) = 1
-Base.iterate(yp::YearPeriod) = yp
-Base.iterate(ym::YearPeriod, s::Integer) = nothing
-Base.Broadcast.broadcastable(yp::YearPeriod) = Ref(yp)
-
 function testYearMonth()
 
   #test the first constructor
@@ -369,3 +292,97 @@ end
 
 
 #testymperformance(100_000_000)
+
+include("Finometrics.jl")
+using Distributions, LinearAlgebra, CuArrays
+
+function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
+    N::Int = 200, K::Int = 2, testerrors::Bool = true,
+    qrtype::Type = M) where {
+    M<:AbstractMatrix, V<:AbstractVector}
+
+
+  #Allocate
+  X::M = M(undef, N,K)
+  Y::V = V(undef, N)
+  ε::V = similar(Y)
+
+  #parameters for the simulation
+  σ2::Vector{Float64} = [2.0^2.0 for i::Int ∈ 1:N]
+  σ2[1:ceil(Int, N/2)] .= 0.5^2.0
+  β::V = [(1.0 * i) for i::Int ∈ 1:K]
+  #println("β: ", β)
+  #println("σ2: $σ2")
+
+  #this will hold the sampled beta
+  e::Vector{Float64} = similar(ε)
+
+  #run the simulation
+  X[:,1] .= 1.0 #intercept
+  for i ∈ 2:K
+    X[:,i] .= V(rand(Uniform(),N))
+  end
+
+  ε = ((s2::Float64)->rand(Normal(0.0,s2^0.5))).(σ2)
+  Y =  X*β .+ ε
+
+  #get the linear model
+  lin::Finometrics.FMLM = Finometrics.FMLM(X, Y, qrtype=qrtype)
+
+  if testerrors
+    #get the homoskedastic SEs
+    ΣHomosked::Matrix{Float64} = Finometrics.getHomoskedΣ!(lin)
+    ΣHomoskedSlow::Matrix{Float64} = Finometrics.getHomoskedΣSlow(lin)
+
+    #print the coefficients
+    println("Coefficients: ",lin.β)
+    println("Homoskedastic Errors: ", diag(ΣHomosked).^.5)
+    println("Check: ", diag(ΣHomoskedSlow).^.5)
+
+    #get the modified white SEs
+    ΣWhite::Matrix{Float64} = similar(ΣHomosked)
+    Finometrics.getModWhiteΣ!(lin, ΣWhite)
+    ΣWhiteSlow::Matrix{Float64} = Finometrics.getModWhiteΣSlow(lin)
+
+    #print the coefficients
+    println("Modified White Errors: ",diag(ΣWhite).^.5)
+    println("Check: ", diag(ΣWhiteSlow).^.5)
+
+    #get the nw SEs
+    ΣNW::Matrix{Float64} = similar(ΣHomosked)
+    Finometrics.getNeweyWest!(lin, 3, ΣNW)
+    ΣNWSlow::Matrix{Float64} = Finometrics.getNeweyWestSlow(lin, 3)
+
+    #print the coefficients
+    println("NW Errors: ",diag(ΣNW).^.5)
+    println("Check: ", diag(ΣNWSlow).^.5)
+
+
+
+    #test the project routines
+    Pa::V = V(undef, N)
+    PM::M = M(undef, N,N)
+    PS::M = M(undef, N,N)
+
+    Finometrics.project!(X,PM)
+    Finometrics.project!(X,Pa)
+
+    Finometrics.projectSlow!(X, PS)
+    println("P: ", Pa[1:5])
+    println("P (from full matrix): ", PM[1:3,1:3])
+    println("P Slow: ", diag(PS)[1:10])
+  end
+end
+
+function rapidreg(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
+    iter::Int = 100, N::Int = 10_000, K::Int = 2, testerrors::Bool = true,
+    qrtype::Type = M) where {M<:AbstractMatrix, V<:AbstractVector}
+
+  LMtest(M, V, N=N, testerrors=false, K=K, qrtype=qrtype)
+end
+#LMtest(CuMatrix{Float32}, CuVector{Float32}, N=1_000)
+#@time LMtest(CuMatrix{Float32}, CuVector{Float32}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
+@time LMtest(Matrix{Float32}, Vector{Float32}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
+
+#@time rapidreg(Matrix{Float32}, Vector{Float32}, iter=700, N=2_000_000, K=200,
+#  qrtype=Matrix{Float32}) #, qrtype=CuMatrix{Float32})
