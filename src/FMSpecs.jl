@@ -51,8 +51,10 @@ Base.show(io::IO, fs::FMSpecs) = print(io, "N: $(fs.N)
 
 #this applies the results function to each specification
 function computeFMLMresults!(dfs::S,
-    specs::FMSpecs{T}; parallel::Bool=false, containsmissings::Bool=true
-    )::Nothing where {S<:Union{Vector{SubDataFrame}, Vector{DataFrame}, GroupedDataFrame}, T<:Any}
+    specs::FMSpecs{T}, ::Type{M} = Matrix{Float64}, ::Type{V} = Vector{Float64}
+    ; parallel::Bool=false, containsmissings::Bool=true, qrtype::Type = M
+    )::Nothing where {S<:Union{Vector{SubDataFrame}, Vector{DataFrame}, GroupedDataFrame},
+    T<:Any, M<:AbstractMatrix, V<:AbstractVector}
 
   #make sure the dimensions are corred
   (specs.N[] == length(specs.specnames) &&
@@ -70,10 +72,10 @@ function computeFMLMresults!(dfs::S,
   #runs the regressions
   #could conceivably parallelize this at some point
   @mpar parallel for i::Int ∈ 1:specs.N[]
-    m::FMLM = FMLM(dfs[i], specs.xspecs[i],  specs.yspecs[i],
+    m::FMLM = FMLM(dfs[i], specs.xspecs[i],  specs.yspecs[i], M, V,
       withinSym = specs.withinspecs[i], clusterSym = specs.clusterspecs[i],
       XNames=specs.xnames[i], YName = specs.yspecs[i],
-      containsmissings=containsmissings)
+      containsmissings=containsmissings, qrtype=qrtype)
     results[i] = specs.aggfunc(m)
   end
 
@@ -83,11 +85,14 @@ function computeFMLMresults!(dfs::S,
 end
 
 #convenience method for providing a single dataframe
-computeFMLMresults!(df::T where T<:AbstractDataFrame, specs::FMSpecs;
-  parallel::Bool=false, containsmissings::Bool = true) =
-  computeFMLMresults!(
-    (i::Int->view(df, :, :)).(1:(specs.N[])), specs,
-    parallel=parallel, containsmissings=containsmissings)
+function computeFMLMresults!(df::T, specs::FMSpecs,
+  ::Type{M} = Matrix{Float64}, ::Type{V} = Vector{Float64};
+  parallel::Bool=false, containsmissings::Bool = true, qrtype::Type=M) where{
+    T<:AbstractDataFrame, M<:AbstractMatrix, V<:AbstractVector}
+
+  return computeFMLMresults!((i::Int->view(df, :, :)).(1:(specs.N[])), specs,M,V,
+    parallel=parallel, containsmissings=containsmissings, qrtype=qrtype)
+end
 
 #provides a keyword access method for creating specs
 function Base.push!(specs; specname::String = "($(specs.N[]+1))",
