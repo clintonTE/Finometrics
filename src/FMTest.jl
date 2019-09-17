@@ -294,7 +294,7 @@ end
 #testymperformance(100_000_000)
 
 include("Finometrics.jl")
-using Distributions, LinearAlgebra, CuArrays
+using Distributions, LinearAlgebra, CuArrays, DataFrames
 
 function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     N::Int = 200, K::Int = 2, testerrors::Bool = true,
@@ -318,45 +318,75 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
   e::Vector{Float64} = similar(ε)
 
   #run the simulation
-  X[:,1] .= 1.0 #intercept
-  for i ∈ 2:K
+  for i ∈ 1:K
     X[:,i] .= V(rand(Uniform(),N))
   end
 
   ε = ((s2::Float64)->rand(Normal(0.0,s2^0.5))).(σ2)
   Y =  X*β .+ ε
 
+  df::DataFrame = DataFrame(idx = 1:N)
+  xnames = (i->Symbol(:X,i)).(1:K)
+
+  for (i,x) ∈ enumerate(eachcol(X))
+    df[!, xnames[i]] = x
+  end
+  df.Y = Y
+  df.G = (i->Symbol(:G,i)).(rand(1:5,N))
+  df.C = (i->Symbol(:C,i)).(rand(1:5,N))
+
   #get the linear model
-  lin::Finometrics.FMLM = Finometrics.FMLM(X, Y, qrtype=qrtype)
+  xspec = Meta.parse(join((string).(xnames),"+"))
+  lin::Finometrics.FMLM = Finometrics.FMLM(df, xspec, :Y, withinsym=:G, clustersym=:C)
 
   if testerrors
     #get the homoskedastic SEs
-    ΣHomosked::Matrix{Float64} = Finometrics.getHomoskedΣ!(lin)
-    ΣHomoskedSlow::Matrix{Float64} = Finometrics.getHomoskedΣSlow(lin)
+    ΣHomosked::Matrix{Float64} = Finometrics.homoskedasticΣ!(lin)
+    ΣHomoskedSlow::Matrix{Float64} = Finometrics.homoskedasticΣ!(lin)
+    linchkwithin::Finometrics.FMLM = Finometrics.FMLM(df, xspec, :Y, withinsym=:G, clustersym=:C, checkwithin=true)
+    ΣHomoskedalt::Matrix{Float64} = Finometrics.homoskedasticΣ!(linchkwithin)
 
     #print the coefficients
-    println("Coefficients: ",lin.β)
-    println("Homoskedastic Errors: ", diag(ΣHomosked).^.5)
+    println("\nCoefficients: ",lin.β)
+    println("Coefficients (alt w/in): ",linchkwithin.β)
+
+    println("\nHomoskedastic Errors: ", diag(ΣHomosked).^.5)
     println("Check: ", diag(ΣHomoskedSlow).^.5)
+    println("Homoskedastic Errors (alt w/in): ", diag(ΣHomoskedalt).^.5)
 
     #get the modified white SEs
-    ΣWhite::Matrix{Float64} = similar(ΣHomosked)
-    Finometrics.getModWhiteΣ!(lin, ΣWhite)
-    ΣWhiteSlow::Matrix{Float64} = Finometrics.getModWhiteΣSlow(lin)
+    ΣMWhite::Matrix{Float64} = similar(ΣHomosked)
+    Finometrics.modifiedwhiteΣ!(lin, ΣMWhite)
+    ΣMWhiteSlow::Matrix{Float64} = Finometrics.modifiedwhiteΣslow(lin)
 
     #print the coefficients
-    println("Modified White Errors: ",diag(ΣWhite).^.5)
+    println("\nModified White Errors: ",diag(ΣMWhite).^.5)
+    println("Check: ", diag(ΣMWhiteSlow).^.5)
+
+    #get the white SEs
+    ΣWhite::Matrix{Float64} = similar(ΣHomosked)
+    Finometrics.whiteΣ!(lin, ΣWhite)
+    ΣWhiteSlow::Matrix{Float64} = Finometrics.whiteΣslow(lin)
+
+    #print the coefficients
+    println("\nWhite Errors: ",diag(ΣWhite).^.5)
     println("Check: ", diag(ΣWhiteSlow).^.5)
+
+    #get the modified white SEs
+    Σclustered::Matrix{Float64} = similar(ΣHomosked)
+    Finometrics.clusteredΣ!(lin, Σclustered)
+    ΣclusteredChk =Finometrics.clusteredΣ!(linchkwithin, Σclustered) #might need a better check here
+    println("\nClustered Errors: ",diag(Σclustered).^.5)
+    println("Check: ", diag(ΣclusteredChk ).^.5)
 
     #get the nw SEs
     ΣNW::Matrix{Float64} = similar(ΣHomosked)
-    Finometrics.getNeweyWest!(lin, 3, ΣNW)
-    ΣNWSlow::Matrix{Float64} = Finometrics.getNeweyWestSlow(lin, 3)
+    Finometrics.neweywestΣ!(lin, 3, ΣNW)
+    ΣNWSlow::Matrix{Float64} = Finometrics.neweywestΣslow(lin, 3)
 
     #print the coefficients
-    println("NW Errors: ",diag(ΣNW).^.5)
+    println("\nNW Errors: ",diag(ΣNW).^.5)
     println("Check: ", diag(ΣNWSlow).^.5)
-
 
 
     #test the project routines
@@ -367,8 +397,8 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     Finometrics.project!(X,PM)
     Finometrics.project!(X,Pa)
 
-    Finometrics.projectSlow!(X, PS)
-    println("P: ", Pa[1:5])
+    Finometrics.projectslow!(X, PS)
+    println("\nP: ", Pa[1:5])
     println("P (from full matrix): ", PM[1:3,1:3])
     println("P Slow: ", diag(PS)[1:10])
   end
@@ -383,7 +413,7 @@ end
 #LMtest(CuMatrix{Float32}, CuVector{Float32}, N=1_000)
 #@time LMtest(CuMatrix{Float32}, CuVector{Float32}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
 #CuArrays.allowscalar(false)
-#@time LMtest(CuMatrix{Float32}, CuVector{Float32}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
+@time LMtest(CuMatrix{Float64}, CuVector{Float64}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
 
-@time rapidreg(CuMatrix{Float32}, CuVector{Float32}, iter=700, N=2_000_000, K=200,
-  qrtype=CuMatrix{Float32}) #, qrtype=CuMatrix{Float32})
+#@time rapidreg(CuMatrix{Float32}, CuVector{Float32}, iter=700, N=2_000_000, K=200,
+#  qrtype=CuMatrix{Float32}) #, qrtype=CuMatrix{Float32})

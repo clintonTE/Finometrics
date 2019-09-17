@@ -12,24 +12,24 @@ function num2str(x::T, decimals::Int=DEFAULT_DECIMALS;
     Ints::Bool = false, scalehurdle::U=nothing, texequation::Bool = false)::String where {
       T<:Union{Real,Missing,Nothing}, U<:Union{Nothing,Real}}
 
-  local outStr::String
+  local outstr::String
 
   x*=scalefactor
 
   #this controls for both missing and nothing values
   if ismissing(something(x,missing))
-    outStr = ""
+    outstr = ""
   elseif scalehurdle ≠ nothing && x≥scalehurdle
-    outStr = "$(Int(round(x*scalefactoronhurdle)))"
+    outstr = "$(Int(round(x*scalefactoronhurdle)))"
   elseif decimals == 0 || (Ints && round(x) == x)
-    outStr = "$(Int(round(x)))"
+    outstr = "$(Int(round(x)))"
   else
-    outStr = format("{:.$(decimals)f}",x)
+    outstr = format("{:.$(decimals)f}",x)
   end
 
-  outStr = texequation ? "\$$outStr\$" : outStr
+  outstr = texequation ? "\$$outstr\$" : outstr
 
-  return outStr
+  return outstr
 end
 
 #depreciated functions

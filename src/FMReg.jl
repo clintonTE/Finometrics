@@ -4,7 +4,7 @@
 #helper function  to get the model matrix from a dataframe given a formula
 #IN: A dataframe and formula object
 #OUT: the model matrix
-function getModelMatrix(df::T, f::FormulaTerm)::Matrix{Float64} where
+function generateX(df::T, f::FormulaTerm) where
   T <: AbstractDataFrame
 
   #*************WARNING WARNING WARNING WARNING WARNING
@@ -14,13 +14,15 @@ function getModelMatrix(df::T, f::FormulaTerm)::Matrix{Float64} where
 
   #f = apply_schema(f, schema(f,df), StatisticalModel)
   #m = modelcols(f.rhs, df)
-
+  CuArrays.allowscalar(true)
   m = ModelMatrix(ModelFrame(f, df)).m
+  CuArrays.allowscalar(false)
+
   return m
 end
 
 #Same as above but allows for an expression
-function getModelMatrix(df::T, rhs::V)::Matrix{Float64} where
+function generateX(df::T, rhs::V)::Matrix{Float64} where
   {T <: AbstractDataFrame, V <: FMExpr}
 
   #special case of no covariates
@@ -34,7 +36,7 @@ function getModelMatrix(df::T, rhs::V)::Matrix{Float64} where
   lhs_hack::Symbol = names(df)[1]
   f::FormulaTerm = @eval(@formula($lhs_hack ~ $rhs))
 
-  return getModelMatrix(df, f)
+  return generateX(df, f)
 end
 
 #helper function to create a one-sided formula given an expression
@@ -49,28 +51,38 @@ end=#
 #helper function  to get the list of symbols in an expression
 #IN: A dataframe and a string object, typically representing a formula
 #OUT: a vector of symbols in the string object
-function getSymbolsFromExpr(exp::V)::Vector{Symbol} where {V <: FMExpr}
-  isnothing(exp) && return Vector{Symbol}() #special case with no focal var
-  symStrings::Vector{String} = split(string(exp),
+function getSymbolsFromExpr(inexpr::V)::Vector{Symbol} where {V <: FMExpr}
+  isnothing(inexpr) && return Vector{Symbol}() #special case with no focal var
+  symstrings::Vector{String} = split(string(inexpr),
     ['|','=','~',' ','+','*','&',')','(','-'], keepempty=false)
 
-  filter!(s::String->typeof(Meta.parse(s))≠Int,symStrings)
+  filter!(s::String->typeof(Meta.parse(s))≠Int,symstrings)
 
   #convert the strings to symbols
-  return Symbol.(symStrings)
+  return Symbol.(symstrings)
 end
 
 
 
 
 #drops missings form a dataframe
-function cloakmissings(df::T, syms::Vector{Symbol})::T where {T<:AbstractDataFrame}
-  return view(df,completecases(df[!,syms]),:)
+function cloakmissings(df::T, syms::Vector{Symbol})::SubDataFrame where {T<:AbstractDataFrame}
+  local sdf::SubDataFrame
+
+  if typeof(df[!, syms[1]]) <: CuVector
+    CuArrays.allowscalar(true) #WARNING- this is expensive!
+    sdf = view(df,completecases(df[!,syms]),:)
+    CuArrays.allowscalar(false)
+  else
+    sdf = view(df,completecases(df[!,syms]),:)
+  end
+
+  return sdf
 end
 
 #helper function for the above, de-nulls entire dataframe
 #IN: a subdataframe #OUT: subdataframe less the null entries
-function cloakmissings(df::T)::T where {T<:AbstractDataFrame}
+function cloakmissings(df::T)::SubDataFrame where {T<:AbstractDataFrame}
   return cloakmissings(df, names(df))
 end
 
@@ -87,7 +99,7 @@ struct FMQR{M<:AbstractMatrix}
 
   N::Int
   K::Int
-  RInv::M
+  Rinv::M
 end
 
 #main constructor for the FMQR object
@@ -97,20 +109,30 @@ function FMQR(::Type{T}, X::M)::FMQR where {T<:AbstractMatrix, M<:AbstractMatrix
   local Q::M
   local R::M
   local Rinv::M
-  local QRCompact
+  local QRcompact
 
   if M == T
-    QRCompact = qr(X)
+    QRcompact = qr(X)
   else
-    QRCompact = qr(T(X))
+    QRcompact = qr(T(X))
   end
 
 
-  R = QRCompact.R
+  R = QRcompact.R
 
   #hack to get around a bug involving scalar operations when pulling the Q matrix
-  Q = T<:CuArray ? CuMatrix(QRCompact.Q) : QRCompact.Q
-  Rinv = T<:CuArray ? Matrix(R)\I : R\I
+  Q = T<:CuArray ? CuMatrix(QRcompact.Q) : QRcompact.Q
+
+  try
+    Rinv = T<:CuArray ? Matrix(R)\I : R\I
+  catch
+    println("X matrix:")
+    display(X)
+
+    println("R matrix:")
+    display(R)
+    error("Inversion of R matrix failed!")
+  end
   return FMQR{M}(Q,
       R,
       size(X,1),
@@ -138,8 +160,8 @@ struct FMLM{M<:AbstractMatrix, V<:AbstractVector} <: FMModel
   β::V #beta coefficient
   ε::V #residuals
 
-  XNames::Vector{Symbol} #names of the X variables
-  YName::Symbol #names of the Y variables
+  Xnames::Vector{Symbol} #names of the X variables
+  Yname::Symbol #names of the Y variables
 
   clusters::Vector{C} where C <: FMData #holds the clusters
 
@@ -147,8 +169,8 @@ end
 
 
 function FMLM(X::M, Y::V; clusters::Vector{C}=[nothing],
-        XNames::Vector{Symbol} = Symbol.(:X, 1:size(X,2)),
-        YName::Symbol = :Y, dof = size(X,1)-size(X,2),
+        Xnames::Vector{Symbol} = Symbol.(:X, 1:size(X,2)),
+        Yname::Symbol = :Y, dof = size(X,1)-size(X,2),
         qrtype::Type = M)::FMLM where {
           M<:AbstractMatrix, V<:AbstractVector, C<:FMData}
     local xqr::FMQR
@@ -156,11 +178,11 @@ function FMLM(X::M, Y::V; clusters::Vector{C}=[nothing],
     xqr = FMQR(qrtype, X)
 
     β::V = Vector{Float64}(undef, xqr.K)
-    getCoeff!(xqr,Y,β)
+    coeff!(xqr,Y,β)
     ε::V = Vector{Float64}(undef, xqr.N)
-    getResid!(X,Y,β,ε)
+    resid!(X,Y,β,ε)
 
-    return FMLM{M,V}(xqr, X, Y, xqr.N, xqr.K, dof, β, ε, XNames, YName, clusters)
+    return FMLM{M,V}(xqr, X, Y, xqr.N, xqr.K, dof, β, ε, Xnames, Yname, clusters)
 end
 
 
@@ -171,68 +193,64 @@ IN: The source dataframe, a formula expression for the RHS,
 OUT: A FMLM object
 NOTE: RHS expression must be ordered with factors last, otherwise
     the factor names will be incorrect =#
-function FMLM(df::AbstractDataFrame,  XExpr::FMExpr, YSym::Symbol,
+function FMLM(df::AbstractDataFrame,  Xexpr::FMExpr, Ysym::Symbol,
     ::Type{M} = Matrix{Float64}, ::Type{V} = Vector{Float64};
-    XNames::Vector{Symbol}=[Symbol("Intercept")], YName::Symbol=:Y,
-    containsmissings::Bool=true, withinSym::NSymbol = nothing, clusterSym::NSymbol = nothing,
-        fixedEffectsSym::NSymbol = nothing, qrtype::Type = M)::FMLM  where {
+    Xnames::Vector{Symbol}=[Symbol("Intercept")], Yname::Symbol=:Y,
+    containsmissings::Bool=true, withinsym::NSymbol = nothing, clustersym::NSymbol = nothing,
+        qrtype::Type = M, checkwithin::Bool = false)::FMLM  where {
          M<:AbstractMatrix, V<:AbstractVector}
 
-    local XModelMatrix::M
+    local Xmodelmatrix::M
     local Y::V
 
-    #NOTE: Delete when code is fully updated
-    if fixedEffectsSym ≠ nothing
-      error("fixedEffectsSym no longer used. Replace within withinSym and/or clusterSym")
-    end
 
     #get the list of symbols from the expression for X
-    XSym::Vector{Symbol} = getSymbolsFromExpr(XExpr)
+    Xsyms::Vector{Symbol} = getSymbolsFromExpr(Xexpr)
 
     #println("flag2.2")
     #form an array of all symbols for which we want to drop nulls
-    viewArray::Vector{Symbol} = [XSym; YSym]
-    if withinSym ≠ nothing && withinSym ∉ viewArray
-      viewArray = [viewArray; withinSym]
+    sarray::Vector{Symbol} = [Xsyms; Ysym]
+    if withinsym ≠ nothing && withinsym ∉ sarray
+      sarray = [sarray; withinsym]
     end
-    if clusterSym ≠ nothing && clusterSym ∉ viewArray
-      viewArray = [viewArray; clusterSym]
+    if clustersym ≠ nothing && clustersym ∉ sarray
+      sarray = [sarray; clustersym]
     end
-    dfSub::SubDataFrame = view(df[!, viewArray], 1:size(df,1), :)
+    sdf::SubDataFrame = view(df[!, sarray], 1:size(df,1), :)
     #println("flag1")
     if containsmissings    # if we are going to drop nulls
-      dfSub = cloakmissings(dfSub)
+      sdf = cloakmissings(sdf)
     end
 
     #get the within and clustering symbols
-    if withinSym ≠ nothing
-      within::Vector{W where W <: FMData}  = Vector{W where W <: FMData}(dfSub[withinSym])
+    if withinsym ≠ nothing
+      within::Vector{W where W <: FMData}  = Vector{W where W <: FMData}(sdf[!, withinsym])
     end
 
     #println("flag4.2")
-    if clusterSym ≠ nothing
-      clusters::Vector{C where C <: FMData}  = Vector{C where C <: FMData}(dfSub[clusterSym])
+    if clustersym ≠ nothing
+      clusters::Vector{C where C <: FMData}  = Vector{C where C <: FMData}(sdf[!, clustersym])
     else
       clusters = [nothing]
     end
 
     #println("flag2")
     #drop the columns which arn't going into the model matrix
-    dfSub = view(dfSub, 1:size(dfSub,1), [XSym; YSym])
+    sdf = view(sdf, 1:size(sdf,1), [Xsyms; Ysym])
     #println("flag3")
 
     #get the factor expanded model matrix (Adds the dummies)
-    XModelMatrix = getModelMatrix(dfSub, XExpr)
-    Y = dfSub[!, YSym]
+    Xmodelmatrix = generateX(sdf, Xexpr)
+    Y = sdf[!, Ysym]
 
     #println("flag41")
 
     #this is a check to make sure the factor expansion follows other columns
-    if length(XSym) > 1
-        for i ∈ 2:length(XSym) #all types
-            if typeof(dfSub[!, XSym[i-1]])<:CategoricalArray &&
-                !(typeof(dfSub[!, XSym[i]])<:CategoricalArray)
-                @warn "Type of $(typeof(dfSub[i])) is preceeded by type of
+    if length(Xsyms) > 1
+        for i ∈ 2:length(Xsyms) #all types
+            if typeof(sdf[!, Xsyms[i-1]])<:CategoricalArray &&
+                !(typeof(sdf[!, Xsyms[i]])<:CategoricalArray)
+                @warn "Type of $(typeof(sdf[i])) is preceeded by type of
                     factor. Column names are likely MISALIGNED. Put factors
                     after numerical variables in RHS expressions."
             end
@@ -240,94 +258,146 @@ function FMLM(df::AbstractDataFrame,  XExpr::FMExpr, YSym::Symbol,
     end
 
     #Now assign the names as appropriate
-    XNamesFull::Vector{Symbol} = Vector{Symbol}(undef, size(XModelMatrix,2))
-    for i ∈ 1:length(XNamesFull)
-        XNamesFull[i] = i≤length(XNames) ? XNames[i] : Symbol(:X,i)
+    Xnamesfull::Vector{Symbol} = Vector{Symbol}(undef, size(Xmodelmatrix,2))
+    for i ∈ 1:length(Xnamesfull)
+        Xnamesfull[i] = i≤length(Xnames) ? Xnames[i] : Symbol(:X,i)
     end
 
     #get the appropriate matrices and construct the FMLM object
 
-    if withinSym != nothing
-      #println("flag3a")
-            #println(typeof(Vector(dfSub[fixedEffectsSym])))
-        return FMLM(XModelMatrix, Y,
+    if withinsym != nothing
+        return FMLM(Xmodelmatrix, Y,
           within, clusters = clusters,
-            XNames=XNamesFull, YName=YName, qrtype=qrtype)
+            Xnames=Xnamesfull, Yname=Yname, qrtype=qrtype)
+    elseif (!checkwithin)
+      #  println("flag3b")
+        return FMLM(Xmodelmatrix,
+            Y, clusters = clusters,
+            Xnames=Xnamesfull, Yname=Yname, qrtype=qrtype)
     else
       #  println("flag3b")
-        return FMLM(XModelMatrix,
+        return FMLMold(Xmodelmatrix,
             Y, clusters = clusters,
-            XNames=XNamesFull, YName=YName, qrtype=qrtype)
+            Xnames=Xnamesfull, Yname=Yname, qrtype=qrtype)
     end
 
 end
 
 #transforms the data using the within estimator, including an adjustment to dof
-function FMLM(X::M, Y::V, within::AbstractVector{W};
+function FMLM(X::M, Y::V, within::Vector{W};
     clusters::Vector{C} = [nothing],
-    XNames::Vector{Symbol} = (Symbol).(:X, 1:size(X,2)),
-    YName::Symbol = :Y,
+    Xnames::Vector{Symbol} = (Symbol).(:X, 1:size(X,2)),
+    Yname::Symbol = :Y,
     qrtype::Type = M)::FMLM where {
       W<:FMData, C<:FMData, M<:AbstractMatrix, V<:AbstractVector}
-
 
     #println("flag4")
     #we get the unique values and make a two way table
     #tVars::Vector{T} = unique(tFI)
-    iVars::Vector{W} = unique(within)
-    iN::Int = length(iVars)
-    iTable::Dict{W,Int} = Dict{W,Int}(iVars[i] => i for i::Int ∈ 1:iN)
+    ivars::Vector{W} = unique(within)
+    iN::Int = length(ivars)
+    itable::Dict{W,Int} = Dict{W,Int}(ivars[i] => i for i::Int ∈ 1:iN)
+    iindex::Dict{W,Vector{Bool}} = Dict(iv=> within.==iv for iv ∈ ivars)
+    iXindex::Dict{W,SubArray} = Dict(iv=>view(X, iindex[iv], :) for iv ∈ ivars)
+    iYindex::Dict{W,SubArray} = Dict(iv=>view(Y, iindex[iv]) for iv ∈ ivars)
 
     K::Int = size(X,2)
     N::Int = size(X,1)
 
     #now create the codified versions
-    #Xi::Matrix{Float64} = Matrix{Float64}(length(iVars),size(X,2))
-    withinCode::Vector{Int} = ((x::W)->iTable[x]).(within)
+    #Xi::Matrix{Float64} = Matrix{Float64}(length(ivars),size(X,2))
+    withincode::Vector{Int} = ((x::W)->itable[x]).(within)
+
+    meanXY::Matrix{Float64} = zeros(iN,K+1)
+    NXY::Vector{Int} = zeros(iN)
+
+    #println("$N,$K,$iN,$(size(NXY))")
+    @fastmath for (i::Int, iv::W) ∈ enumerate(ivars)
+      meanY::Float64 = mean(iYindex[iv])
+      meanX::M = mean(iXindex[iv], dims=1) #This is actually a row vector
+      meanX[1] = 0.0 #WARNING: Assumes first column is the intercept
+
+      iYindex[iv] .-= meanY
+      iXindex[iv] .-= meanX
+    end
+
+
+    return FMLM(X, Y,
+      clusters=clusters, Xnames=Xnames, Yname=Yname,
+      dof = N - iN - K, qrtype=qrtype)
+end
+
+function FMLMold(X::M, Y::V, within::AbstractVector{W};
+    clusters::Vector{C} = [nothing],
+    Xnames::Vector{Symbol} = (Symbol).(:X, 1:size(X,2)),
+    Yname::Symbol = :Y,
+    qrtype::Type = M)::FMLM where {
+      W<:FMData, C<:FMData, M<:AbstractMatrix, V<:AbstractVector}
+
+    if M<:CuArray
+      error("Cluster code needs overhaul for effective gpu usage")
+    end
+
+
+    #println("flag4")
+    #we get the unique values and make a two way table
+    #tVars::Vector{T} = unique(tFI)
+    ivars::Vector{W} = unique(within)
+    iN::Int = length(ivars)
+    itable::Dict{W,Int} = Dict{W,Int}(ivars[i] => i for i::Int ∈ 1:iN)
+
+    K::Int = size(X,2)
+    N::Int = size(X,1)
+
+    #now create the codified versions
+    #Xi::Matrix{Float64} = Matrix{Float64}(length(ivars),size(X,2))
+    withincode::Vector{Int} = ((x::W)->itable[x]).(within)
 
     meanXY::Matrix{Float64} = zeros(iN,K+1)
     NXY::Vector{Int} = zeros(iN)
 
     #println("$N,$K,$iN,$(size(NXY))")
     @fastmath for r::Int ∈ 1:N
-      meanXY[withinCode[r],K+1] += Y[r]
-      NXY[withinCode[r]] += 1.0
+      meanXY[withincode[r],K+1] += Y[r]
+      NXY[withincode[r]] += 1.0
     end
 
     @fastmath for c::Int ∈2:K, r ∈1:N
-      meanXY[withinCode[r],c] += X[r,c]
+      meanXY[withincode[r],c] += X[r,c]
     end
 
     meanXY ./= NXY
 
     @fastmath for c::Int ∈2:K, r::Int ∈1:N
-      X[r,c] -= meanXY[withinCode[r],c]
+      X[r,c] -= meanXY[withincode[r],c]
     end
 
     @fastmath for r::Int ∈ 1:N
-      Y[r] -= meanXY[withinCode[r],K+1]
+      Y[r] -= meanXY[withincode[r],K+1]
     end
 
     return FMLM(X, Y,
-      clusters=clusters, XNames=XNames, YName=YName,
+      clusters=clusters, Xnames=Xnames, Yname=Yname,
       dof = N - iN - K, qrtype=qrtype)
 end
 
 #this function calculates the Pearson correlation coefficient of the predicted values
 #relative to the realized values
-getR(lin::FMLM)::Float64 = cor(lin.Y, lin.Y .- lin.ε)
+getR(args...; keyargs...) = error("use R instead")
+R(lin::FMLM)::Float64 = cor(lin.Y, lin.Y .- lin.ε)
 
-function getR²(lin::FMLM; adjusted::Bool = true, percentage::Bool = false)::Float64
-  R²::Float64 = getR(lin)^.2
+getR²(args...; keyargs...) = error("use R² instead")
+function R²(lin::FMLM; adjusted::Bool = true)::Float64
+  R²::Float64 = R(lin)^.2
   R² = adjusted ? R² - (1-R²)*(lin.N-lin.dof+1)/lin.dof : R²
-  R² = percentage ? R²*100 : R²
 
   return R²
 end
 
 
 #fucntion for getting regression coefficients
-getTerm(lm::FMLM, s::Symbol) = (lm.β[findfirst(lm.XNames, s)])::Float64
+getTerm(args...; keyargs...) = error("use term instead")
+term(lm::FMLM, s::Symbol) = (lm.β[findfirst(lm.Xnames, s)])::Float64
 
 
 #########################Project!##############################
@@ -337,7 +407,7 @@ IN: THe FMQR decomposition and the memory for  the projection matrix
 OUT: Writes and returns the projection matrix
 NOTE: This method will allocate the projection matrix if no second
 argument is supplied. =#
-function project!(xqr::FMQR{M}, P::M=Matrix{Float64}(undef, xqr.N, xqr.N)
+function project!(xqr::FMQR{M}, P::M=M(undef, xqr.N, xqr.N)
   )::Nothing where M<:AbstractMatrix
 
   T::Type = eltype(M)
@@ -365,7 +435,7 @@ IN: Independent variable X matrix and the memory for  the projection matrix
 or vector for the diagonal
 OUT: Writes and returns the projection matrix=#
 function project!(X::M,
-  P::AbstractArray=Matrix{Float64}(undef, size(X,1),size(X,1)))::Nothing where M<:AbstractMatrix
+  P::AbstractArray=M(undef, size(X,1),size(X,1)))::Nothing where M<:AbstractMatrix
 
   return project!(FMQR(X),P)
 end
@@ -374,20 +444,22 @@ end
 output should be identical to the matrix function above
 IN: Independent variable X matrix, memory for the projection matrix
 OUT: Writes and returns teh projection matrix=#
-function projectSlow!(X::M, P::AbstractArray) where M<:AbstractMatrix
-  XXInv = M(Matrix(X' * X)\I)
-  P .= X * XXInv * X'
+projectSlow!(args...; keyargs...) = error("Use projectslow! instead")
+function projectslow!(X::M, P::AbstractArray) where M<:AbstractMatrix
+  XXinv = M(Matrix(X' * X)\I)
+  P .= X * XXinv * X'
   return P
 end
 
-#########################getResid!#########################
+#########################resid!#########################
 
 
 #=Main method to get residuals
 IN: X matrix the RHS variables, LHS dependent variable,
 a coefficient vector, optionally the memory for the residual vector
 OUT: Writes and returns the residual vector=#
-function getResid!(X::M, Y::V,
+getResid!(args...; keyargs...) = error("use resid! instead")
+function resid!(X::M, Y::V,
   β::V, ε::V=similar(Y)) where {M<:AbstractMatrix, V<:AbstractVector}
 
   T::Type = eltype(V)
@@ -403,12 +475,15 @@ end
 IN: QR decomposition of X matrix the RHS variables, LHS dependent variable,
 optionally the memory for the coefficient vector
 OUT: Writes and returns the coefficient vector=#
-function getCoeff!(xqr::FMQR{M}, Y::V,
-  β::V = Vector{Float64}(undef, xqr.K))::V where  {M<:AbstractMatrix, V<:AbstractVector}
+
+getCoeff!(args...; keyargs...) = error("Use coeff! instead")
+
+function coeff!(xqr::FMQR{M}, Y::V,
+  β::V = V(undef, xqr.K))::V where  {M<:AbstractMatrix, V<:AbstractVector}
 
   #println("got here 5")
-  #println("xqr.RInv size: $(size(xqr.RInv)) xqr.Q size:$(size(xqr.Q))")
-  RinvQt::M = BLAS.gemm('N', 'T', xqr.RInv, xqr.Q)
+  #println("xqr.Rinv size: $(size(xqr.Rinv)) xqr.Q size:$(size(xqr.Q))")
+  RinvQt::M = BLAS.gemm('N', 'T', xqr.Rinv, xqr.Q)
   #println("got here 6")
 
   if M<:Matrix{Float64}
@@ -427,18 +502,14 @@ end
 #IN: The QR decomposition from the regression, a vector of residuals,
 #optionally memory for the covariance matrix
 #OUT: Writes and returns the covariance matrix
+getHomoskedΣ!(args...; keyargs...) = error("use homoskedasticΣ instead")
 
-function getHomoskedΣ!(xqr::FMQR{M}, ε::V,
-  Σ::Matrix{Float64} = Matrix{Float64}(undef, lin.K, lin.K);
-  dofCorrect::Float64 = 1.0)::Matrix{Float64} where  {M<:AbstractMatrix, V<:AbstractVector}
+function homoskedasticΣ!(xqr::FMQR{M}, ε::V, Σ::M = M(undef, lin.K, lin.K);
+  dofcorrect::Float64 = 1.0)::M where  {M<:AbstractMatrix, V<:AbstractVector}
 
-  if M<:Matrix{Float64}
-    BLAS.gemm!('N','T',(ε⋅ε)/xqr.N,xqr.RInv,xqr.RInv,0.0,Σ)
-  else
-    Σ = Matrix(BLAS.gemm('N','T',(ε⋅ε)/xqr.N,xqr.RInv,xqr.RInv))
-  end
+  BLAS.gemm!('N','T',(ε⋅ε)/xqr.N,xqr.Rinv,xqr.Rinv,0.0,Σ)
 
-  Σ .*= dofCorrect #WARNING: dof correction? is it being double counted?
+  Σ .*= dofcorrect #WARNING: dof correction? is it being double counted?
 
   return Σ #[X'X]^-1*σ2
 end
@@ -447,10 +518,10 @@ end
 from a linear model
 IN: A linear model, optionally memory for the covariance matrix
 OUT: WRites and returns the covariance matrix=#
-function getHomoskedΣ!(lin::FMLM,
-  Σ::Matrix{Float64}=Matrix{Float64}(undef, lin.K, lin.K))::Matrix{Float64}
+function homoskedasticΣ!(lin::FMLM{M},
+  Σ::M = M(undef, lin.K, lin.K))::M where M<:AbstractMatrix
 
-  return getHomoskedΣ!(lin.xqr, lin.ε, Σ, dofCorrect = lin.N / lin.dof)
+  return homoskedasticΣ!(lin.xqr, lin.ε, Σ, dofcorrect = lin.N / lin.dof)
 end
 
 
@@ -458,7 +529,8 @@ end
 Output should be identical to the standard methods
 IN: Independent variable X matrix
 OUT: Returns the covariance matrix=#
-function getHomoskedΣSlow(X::M, ε::V)::Matrix{Float64} where {M<:AbstractMatrix, V<:AbstractVector}
+getHomoskedΣSlow(args...; keyargs...) = error("use homoskedasticΣslow instead")
+function homoskedasticΣslow(X::M, ε::V)::M where {M<:AbstractMatrix, V<:AbstractVector}
   T::Type = eltype(V)
 
   out = Matrix(X' * X)\I .* (ε⋅ε)/(size(X,1)-size(X,2))
@@ -466,23 +538,25 @@ function getHomoskedΣSlow(X::M, ε::V)::Matrix{Float64} where {M<:AbstractMatri
 end
 
 #Convenience method for above: IN: A linear model #OUT: A covariance matrix
-getHomoskedΣSlow(lin::FMLM)::Matrix{Float64} =
-  getHomoskedΣSlow(lin.X, lin.Y.-lin.X * lin.β)
+homoskedasticΣslow(lin::FMLM{M where M<:AbstractMatrix}) =
+  homoskedasticΣslow(lin.X, lin.Y.-lin.X * lin.β)::M
 
 
 #########################getNeweyWest ##########OLS Only
 #NOTE: To match Sandwich NeweyWest in R, set prewhite = FALSE, adjust = TRUE
-function getNeweyWest!(X::M, xqr::FMQR{M}, ε::V, lag::Int,
-  Σ::Matrix{Float64} = Matrix{Float64}(undef, xqr.K, xqr.K),
-  dofCorrect::Float64 = 1.0)::Matrix{Float64} where {M<:AbstractMatrix, V<:AbstractVector}
+getNeweyWest!(args...; keyargs...) = error("use neweywestΣ! instead")
+
+function neweywestΣ!(X::M, xqr::FMQR{M}, ε::V, lag::Int,
+  Σ::M = M(undef, xqr.K, xqr.K),
+  dofcorrect::Float64 = 1.0)::M where {M<:AbstractMatrix, V<:AbstractVector}
 
   #pre-allocate for the spectral matrix
 
-  #NOTE: we need to switch away from gpu arrays sooner due to the lagging
+  #NOTE: we need to switch away from gpu arrays due to the lagging
   #that is, views don't seem to work properly on gpu matrices
   T::Type = eltype(M)
   Rv::Matrix{T} = Matrix{T}(undef, xqr.K, xqr.K) #pre-allocate working matrix
-  RRInv::Matrix{T} = BLAS.gemm('N', 'T', xqr.RInv, xqr.RInv) #this is equivelent to [X'X]^-1
+  RRinv::Matrix{T} = BLAS.gemm('N', 'T', xqr.Rinv, xqr.Rinv) #this is equivelent to [X'X]^-1
 
   #need to multiply through by the error
   Xe::Matrix{T} = X .* ε
@@ -495,34 +569,36 @@ function getNeweyWest!(X::M, xqr::FMQR{M}, ε::V, lag::Int,
   end
 
   #this is [X'X]^-1S=[R'R]^-1S
-  RRInvS::Matrix{T} = BLAS.gemm('N', 'N', RRInv, ST)
+  RRinvS::Matrix{T} = BLAS.gemm('N', 'N', RRinv, ST)
 
   #finally we have T[X'X]^-1S[X'X]^-1
   if M<:Matrix{Float64}
-    BLAS.gemm!('N','N',Float64(xqr.N), RRInvS, RRInv, 0.0, Σ)
+    BLAS.gemm!('N','N',Float64(xqr.N), RRinvS, RRinv, 0.0, Σ)
   else
-    Σ = Matrix(BLAS.gemm('N','N',T(xqr.N), RRInvS, RRInv))
+    Σ = BLAS.gemm('N','N',T(xqr.N), RRinvS, RRinv)
   end
 
 
-  Σ .*= dofCorrect
-  #println("$(diag(Σ .* dofCorrect))")sasa
+  Σ .*= dofcorrect
+  #println("$(diag(Σ .* dofcorrect))")sasa
   return Σ
 end
 
 
-function getNeweyWest!(lin::FMLM, lag::Int,
-  Σ::Matrix{Float64} = Matrix{Float64}(undef, lin.K, lin.K))::Matrix{Float64}
+function neweywestΣ!(lin::FMLM, lag::Int,
+  Σ::M = M(undef, lin.K, lin.K))::M where M<: AbstractMatrix
 
-  return getNeweyWest!(lin.X, lin.xqr, lin.ε, lag, Σ, lin.N/lin.dof)
+  return neweywestΣ!(lin.X, lin.xqr, lin.ε, lag, Σ, lin.N/lin.dof)
 end
 
 #helper function in case the input requires a single argument function
-getNeweyWestFunc(lag::Int) = (lin::FMLM)-> getNeweyWest!(lin, lag)
+getNeweyWestFunc(args...; keyargs...) = error("use neweywestΣfunc instead")
+neweywestΣfunc(lag::Int) = (lin::FMLM)-> neweywestΣ!(lin, lag)
 
 #testing for NeweyWest
 #NOTE: assumes dofcorrect value
-function getNeweyWestSlow(X::M, ε::V, lag::Int, dofCorrect::Float64
+getNeweyWestSlow(args...; keyargs...) = error("use neweywestΣslow instead")
+function neweywestΣslow(X::M, ε::V, lag::Int, dofcorrect::Float64
     )  where {M<:AbstractMatrix, V<:AbstractVector}
 
   N::Int, K::Int = size(X)
@@ -547,107 +623,105 @@ function getNeweyWestSlow(X::M, ε::V, lag::Int, dofCorrect::Float64
     ST .+= (lag + 1. - v)/(lag + 1.) .* (xxt .+ xxt')
   end
 
-  XXInv::Matrix = Matrix(X' * X) \ I
+  XXinv::Matrix = Matrix(X' * X) \ I
 
-  ret::Matrix = N*XXInv*ST* XXInv
+  ret::M = N*XXinv*ST* XXinv
   (M<:CuArray) && CuArrays.allowscalar(false) #don't care about performance here
-  return ret * dofCorrect
+  return ret * dofcorrect
 end
 
-getNeweyWestSlow(lin::FMLM, lag::Int) = getNeweyWestSlow(lin.X, lin.Y .- lin.X * lin.β, lag, lin.N/lin.dof)
 
-getNeweyWestFuncSlow(lag::Int)::Function = (lin::FMLM)-> getNeweyWestSlow(lin, lag)
+
+neweywestΣslow(lin::FMLM, lag::Int) = neweywestΣslow(lin.X, lin.Y .- lin.X * lin.β, lag, lin.N/lin.dof)
+
+getNeweyWestFuncSlow(args...; keyargs...) = error("use neweywestΣslow instead")
+neweywestΣfuncslow(lag::Int)::Function = (lin::FMLM)-> neweywestΣslow(lin, lag)
 ###################getWhiteERRORs ###OLS only
 
-function getWhiteΣ!(xqr::FMQR{M}, ε::V,
-  Σ::Matrix{Float64} = Matrix{Float64}(undef, xqr.K, xqr.K),
-  dofCorrect::Float64=1.0)::Matrix{Float64} where {M<:AbstractMatrix, V<:AbstractVector}
+getWhiteΣ!(args...; keyargs...) = error("use whiteΣ! instead")
+function whiteΣ!(xqr::FMQR{M}, ε::V,
+  Σ::M = M(undef, xqr.K, xqr.K),
+  dofcorrect::Float64=1.0)::M where {M<:AbstractMatrix, V<:AbstractVector}
 
   Λ::V = ε.^2.0
 
-  QRtInv::M = BLAS.gemm('N','T',xqr.Q,xqr.RInv) #Q(R')^-1
-  RInvQΛ::M = QRtInv'
+  QRtinv::M = BLAS.gemm('N','T',xqr.Q,xqr.Rinv) #Q(R')^-1
+  RinvQΛ::M = QRtinv'
+  RinvQΛ *= Diagonal(Λ)
 
-  #loop to scale the matrix by Λ (modified part of modified white)
-  @fastmath for j ∈ 1:xqr.N, i∈1:xqr.K
-    RInvQΛ[i,j] *= Λ[j]
-  end
+  BLAS.gemm!('N','N',1.0,RinvQΛ, QRtinv, 0.0, Σ)
 
-  if M<:Matrix{Float64}
-    BLAS.gemm!('N','N',1.0,RInvQΛ, QRtInv, 0.0, Σ)
-  else
-    Σ = Matrix(BLAS.gemm('N','N',1.0,RInvQΛ, QRtInv))
-  end
-
-  Σ .*= dofCorrect
+  Σ .*= dofcorrect
 
   #final multiplicaiton and assignment
   return Σ #R^-1Q'ΛQ(R')^-1
 end
 
-function getWhiteΣ!(lin::FMLM,
-  Σ::Matrix{Float64} = Matrix{Float64}(undef, lin.K, lin.K))::Matrix{Float64}
+function whiteΣ!(lin::FMLM{M},
+  Σ::M = M(undef, lin.K, lin.K))::M where M<:AbstractMatrix
 
-  return getWhiteΣ!(lin.xqr, lin.ε, Σ, lin.N/lin.dof)
+  return whiteΣ!(lin.xqr, lin.ε, Σ, lin.N/lin.dof)
 end
 
 #for testing purposes only
-function getWhiteΣSlow(X::M, ε::V)  where {M<:AbstractMatrix, V<:AbstractVector}
-  XXInv::M = (X' * X)\M(I, size(X,2), size(X,2))
+whiteΣslow(args...; keyargs...) = error("use whiteΣslow instead")
+function whiteΣslow(X::M, ε::V, dofcorrect::Float64=1.0)  where {M<:AbstractMatrix, V<:AbstractVector}
+  XXinv::M = (X' * X)\I
 
-  return XXInv * X' * diagm(ε) .^ 2.0 * X * XXInv
+  return XXinv * X' * diagm(ε) .^ 2.0 * X * XXinv
 end
 
 #Convenience method for above: IN: A linear model #OUT: A covariance matrix
-getWhiteΣSlow(lin::FMLM) = getWhiteΣSlow(lin.X, lin.Y.-lin.X * lin.β)
+whiteΣslow(lin::FMLM) = whiteΣslow(lin.X, lin.Y.-lin.X * lin.β, lin.N/lin.dof)
 
 ###########################getClustered SEs
 #method for getting clustered errors
 #from http://cameron.econ.ucdavis.edu/research/Cameron_Miller_JHR_2015_February.pdf
 #forumala: [X'X]^-1*B*[X'X]^-1 where B= sum over G (Xg'*εg*εg'*Xg) and g is indexed for G clusters
-function getClustered!(X::M, xqr::FMQR{M}, ε::V, clusters::AbstractVector{C},
-    Σ::Matrix{Float64} = Matrix{Float64}(undef, xqr.K, xqr.K),
-    dof::Int = xqr.N-xqr.K)::Matrix{Float64} where{M<:AbstractMatrix, V<:AbstractVector, C<:FMData}
+getClustered!(args...; keyargs...) = error("use clusteredΣ! instead")
+function clusteredΣ!(X::M, xqr::FMQR{M}, ε::V, clusters::C,
+    Σ::M = M(undef, xqr.K, xqr.K),
+    dof::Int = xqr.N-xqr.K)::M where {M<:AbstractMatrix, V<:AbstractVector, C<:AbstractVector}
 
   #convenience vectors and values
-  cVars::Vector{C} = unique(clusters)
-  G::Int = length(cVars)
-  cTable::Dict = Dict(cVars[i] => i for i::Int ∈ 1:G)
-  clusterCode::Vector{Int} = ((x::C)->cTable[x]).(clusters)
+  cvars::C = unique(clusters)
+  Nclusters::Int = length(cvars)
+  ctable::Dict = Dict(cvars[i] => i for i::Int ∈ 1:Nclusters)
+  clustercode::Vector{Int} = ((x)->ctable[x]).(clusters)
 
   #iterate through the groups
   B::M = zeros(xqr.K, xqr.K)
-  @fastmath for i::Int ∈ 1:G
-    Xg::SubArray{Float64,2} = view(X, clusterCode .== i, :)
-    ug::SubArray{Float64,1} = view(ε, clusterCode .== i)
+  @fastmath for i::Int ∈ 1:Nclusters
+    Xg::SubArray = view(X, clustercode .== i, :)
+    ug::SubArray = view(ε, clustercode .== i)
     B .+= Xg'*ug*ug'*Xg
   end
 
   # Calc [X'X]^-1*B*[X'X]^-1
-  RRInv::M =  BLAS.gemm('N','T',xqr.RInv,xqr.RInv)
-  RRInvB::M = BLAS.gemm('N','N',RRInv,B)
+  RRinv::M =  BLAS.gemm('N','T',xqr.Rinv,xqr.Rinv)
+  RRinvB::M = BLAS.gemm('N','N',RRinv,B)
 
-  dofCorrect::Float64 = G/(G-1.)*(xqr.N-1.)/dof #small sample correction
+  dofcorrect::Float64 = Nclusters/(Nclusters-1.)*(xqr.N-1.)/dof #small sample correction
 
   if M<:Matrix{Float64}
-    BLAS.gemm!('N','N',dofCorrect,RRInvB,RRInv,0.0,Σ)
+    BLAS.gemm!('N','N',dofcorrect,RRinvB,RRinv,0.0,Σ)
   else
-    Σ = Matrix(BLAS.gemm('N','N',dofCorrect,RRInvB,RRInv))
+    Σ = Matrix(BLAS.gemm('N','N',dofcorrect,RRinvB,RRinv))
   end
 
-  @fastmath for i ∈ 1:xqr.K
+  #=@fastmath for i ∈ 1:xqr.K
     if Σ[i,i] < 0.
       error("Negative variance ($i): $(diag(Σ))")
     end
-  end
+  end=#
 
   #println("$(diag(Σ))")
   return Σ
 end
 
-function getClustered!(lin::FMLM, Σ::Matrix{Float64} = Matrix{Float64}(undef, lin.K, lin.K))::Matrix{Float64}
+function clusteredΣ!(lin::FMLM{M}, Σ::M = M(undef, lin.K, lin.K))::M where M<:AbstractMatrix
 
-  return getClustered!(lin.X, lin.xqr, lin.ε, lin.clusters, Σ, lin.dof)
+  return clusteredΣ!(lin.X, lin.xqr, lin.ε, lin.clusters, Σ, lin.dof)
 end
 
 ###################getMWErrors!##############################
@@ -658,30 +732,27 @@ end
 IN: A FMQR decomposition object, a residuals vector,
 optional memory for a covariance matrix
 OUT: Writes and returns the covariance matrix=#
-function getModWhiteΣ!(xqr::FMQR{M}, ε::V,
-  Σ::Matrix{Float64} = Matrix{Float64}(undef, xqr.K, xqr.K), dofCorrect::Float64 = 1.0
-  )::Matrix{Float64} where {M<:AbstractMatrix, V<:AbstractVector}
+getModWhiteΣ!(args...; keyargs...) = error("Use modifiedwhiteΣ! instead")
+function modifiedwhiteΣ!(xqr::FMQR{M}, ε::V,
+  Σ::M = M(undef, xqr.K, xqr.K), dofcorrect::Float64 = 1.0
+  )::M where {M<:AbstractMatrix, V<:AbstractVector}
 
   Λ::V = similar(ε)
 
   project!(xqr,Λ) #get the projection diagonal
   Λ .= (ε./(1.0.-Λ)).^2.0
 
-  QRtInv::M = BLAS.gemm('N','T',xqr.Q,xqr.RInv) #Q(R')^-1
-  RInvQΛ::M = QRtInv'
+  QRtinv::M = BLAS.gemm('N','T',xqr.Q,xqr.Rinv) #Q(R')^-1
+  RinvQΛ::M = QRtinv'
 
   #loop to scale the matrix by Λ (modified part of modified white)
   #=@fastmath for j ∈ 1:xqr.N, i∈1:xqr.K
-    RInvQΛ[i,j] *= Λ[j]
+    RinvQΛ[i,j] *= Λ[j]
   end=#
-  RInvQΛ *= Diagonal(Λ) #hopefully this is fast
+  RinvQΛ *= Diagonal(Λ) #hopefully this is fast
   T::Type = eltype(M)
 
-  if M<:Matrix{Float64}
-    BLAS.gemm!('N','N',dofCorrect,RInvQΛ, QRtInv,0.0,Σ)
-  else
-    Σ .= Matrix(BLAS.gemm('N','N',T(dofCorrect),RInvQΛ, QRtInv))
-  end
+  BLAS.gemm!('N','N',dofcorrect,RinvQΛ, QRtinv,0.0,Σ)
   #final multiplicaiton and assignment
   return  Σ
 end
@@ -689,10 +760,10 @@ end
 #=helper method which extracts the required components from a linear model
 IN: A linear model, optionally memory for the covariance matrix
 OUT: Writes and allocates the covariance matrix=#
-function getModWhiteΣ!(lin::FMLM,
-  Σ::Matrix{Float64} = Matrix{Float64}(undef, lin.K, lin.K))::Matrix{Float64}
+function modifiedwhiteΣ!(lin::FMLM{M},
+  Σ::M = M(undef, lin.K, lin.K))::M where M <: AbstractMatrix
 
-  return getModWhiteΣ!(lin.xqr, lin.ε, Σ, lin.N/lin.dof)
+  return modifiedwhiteΣ!(lin.xqr, lin.ε, Σ, lin.N/lin.dof)
 end
 
 
@@ -700,25 +771,24 @@ end
 Output should be identical to the standard methods
 IN: Independent variable X matrix
 OUT: Returns the covariance matrix=#
-function getModWhiteΣSlow(X::M, ε::V, dofcorrect::Float64) where {M<:AbstractMatrix, V<:AbstractVector}
+getModWhiteΣSlow(args...; keyargs...) = error("Use modifiedwhiteΣslowinstead")
+function modifiedwhiteΣslow(X::M, ε::V, dofcorrect::Float64) where {M<:AbstractMatrix, V<:AbstractVector}
 
   #do this since we only care about clarity (and not performance)
   (M<:CuArray) && CuArrays.allowscalar(true)
 
-  XXInv::M = Matrix(X' * X)\I
+  XXinv::M = Matrix(X' * X)\I
 
-  P::M = X * (XXInv) * X'
-  Σ::M = XXInv * X' * diagm(ε  ./ (1.0 .- diag(P))) .^ 2.0 * X * XXInv
+  P::M = X * (XXinv) * X'
+  Σ::M = XXinv * X' * diagm(ε  ./ (1.0 .- diag(P))) .^ 2.0 * X * XXinv
 
   (M<:CuArray) && CuArrays.allowscalar(false)
 
-  if M<:Matrix{Float64}
-    return Σ .* dofcorrect
-  else
-    return Matrix{Float64}(Matrix(Σ)) .* dofcorrect
-  end
+
+  return Σ .* dofcorrect
+
 end
 
 #Convenience method for above: IN: A linear model #OUT: A covariance matrix
-getModWhiteΣSlow(lin::FMLM, dofcorrect::Float64 = lin.N/lin.dof) = getModWhiteΣSlow(
+modifiedwhiteΣslow(lin::FMLM, dofcorrect::Float64 = lin.N/lin.dof) = modifiedwhiteΣslow(
   lin.X, lin.Y.-lin.X * lin.β, dofcorrect)

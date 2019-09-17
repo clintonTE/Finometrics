@@ -56,39 +56,33 @@ end
 
 ######################Methods####################
 export FMLM, #Regression methods
-  FM2SLS,
-  project!,
-  getResid!,
-  pullModelMatrix,
-  getCoeff!,
-  getHomoskedΣ!,
-  getModWhiteΣ!,
-  getWhiteΣ!,
-  getNeweyWest!,
-  getModWhiteΣSlow,
-  getHomoskedΣSlow,
-  getWhiteΣSlow,
-  getNeweyWestSlow,
-  dropNullsFromDF,
+  project!, #regression methods (won't work)
+  resid!,
+  coeff!,
+  homoskedasticΣ!,
+  modifiedwhiteΣ!,
+  whiteΣ!,
+  neweywestΣ!,
+  homoskedasticΣslow,
+  modifiedwhiteΣslow,
+  whiteΣslow,
+  neweywestΣslow,
   FMExpr,
   FMSym,
   FMQR,
-  get1stStage,
-  getTerm,
-  getR,
-  getR²,
-  getNeweyWestFunc,
-  getClustered!,
+  term,
+  R,
+  R²,
+  neweywestΣfunc,
+  neweywestΣfuncslow,
+  clusteredΣ!,
+
+
 
   textable, #IO Mthods
   writetextable,
   array2string,
   num2str,
-  texTable, #WARNING: depreciated
-  writeTexTable, #WARNING: depreciated
-  array2String,  #WARNING: depreciated
-  num2Str, #WARNING: depreciated
-  vec2String, #WARNING: depreciated
 
   skewnessStat, #FMstat methods
   kurtosisStat,
@@ -143,6 +137,7 @@ export FMLM, #Regression methods
   CU32,
   CU64,
 
+  #yearmonth types
   YearQuarter,
   MYearQuarter,
   YearMonth,
@@ -150,8 +145,28 @@ export FMLM, #Regression methods
   eom,
   bom,
   eoq,
-  boq
+  boq,
 
+  ##WARNING DEPRECIATED methods #WARNING
+  texTable,
+  writeTexTable,
+  array2String,
+  num2Str,
+  vec2String,
+  getCoeff!,
+  getHomoskedΣ!,
+  getModWhiteΣ!,
+  getWhiteΣ!,
+  getNeweyWest!,
+  getModWhiteΣSlow,
+  getHomoskedΣSlow,
+  getWhiteΣSlow,
+  getNeweyWestSlow,
+  getTerm,
+  getR,
+  getR²,
+  getNeweyWestFunc,
+  getClustered!
 
 ##################Custom types
 
