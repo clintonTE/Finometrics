@@ -4,8 +4,8 @@
 #helper function  to get the model matrix from a dataframe given a formula
 #IN: A dataframe and formula object
 #OUT: the model matrix
-function generateX(df::T, f::FormulaTerm) where
-  T <: AbstractDataFrame
+function generateX(::Type{M}, df::T, f::FormulaTerm)::M where
+  {M<:AbstractMatrix, T <: AbstractDataFrame}
 
   #*************WARNING WARNING WARNING WARNING WARNING
   #replace the code below w/ the two lines above
@@ -14,16 +14,16 @@ function generateX(df::T, f::FormulaTerm) where
 
   #f = apply_schema(f, schema(f,df), StatisticalModel)
   #m = modelcols(f.rhs, df)
-  CuArrays.allowscalar(true)
-  m = ModelMatrix(ModelFrame(f, df)).m
-  CuArrays.allowscalar(false)
+  (M<:CuArray) && CuArrays.allowscalar(true)
+  m::M = ModelMatrix(ModelFrame(f, df)).m
+  (M<:CuArray) && CuArrays.allowscalar(false)
 
   return m
 end
 
 #Same as above but allows for an expression
-function generateX(df::T, rhs::V)::Matrix{Float64} where
-  {T <: AbstractDataFrame, V <: FMExpr}
+function generateX(::Type{M}, df::T, rhs::V)::M where
+  {M<:AbstractMatrix, T <: AbstractDataFrame, V <: FMExpr}
 
   #special case of no covariates
   if isnothing(rhs) #(rhs == Symbol(""))
@@ -36,7 +36,7 @@ function generateX(df::T, rhs::V)::Matrix{Float64} where
   lhs_hack::Symbol = names(df)[1]
   f::FormulaTerm = @eval(@formula($lhs_hack ~ $rhs))
 
-  return generateX(df, f)
+  return generateX(M, df, f)
 end
 
 #helper function to create a one-sided formula given an expression
@@ -66,24 +66,21 @@ end
 
 
 #drops missings form a dataframe
-function cloakmissings(df::T, syms::Vector{Symbol})::SubDataFrame where {T<:AbstractDataFrame}
+function cloakmissings(::Type{M}, df::T, syms::Vector{Symbol})::SubDataFrame where {
+    T<:AbstractDataFrame, M<:AbstractMatrix}
   local sdf::SubDataFrame
 
-  if typeof(df[!, syms[1]]) <: CuVector
-    CuArrays.allowscalar(true) #WARNING- this is expensive!
-    sdf = view(df,completecases(df[!,syms]),:)
-    CuArrays.allowscalar(false)
-  else
-    sdf = view(df,completecases(df[!,syms]),:)
-  end
+  (M <: CuArray) && CuArrays.allowscalar(true) #WARNING- this is expensive!
+  sdf = view(df,completecases(df[!,syms]),:)
+  (M <: CuArray) && CuArrays.allowscalar(false)
 
   return sdf
 end
 
 #helper function for the above, de-nulls entire dataframe
 #IN: a subdataframe #OUT: subdataframe less the null entries
-function cloakmissings(df::T)::SubDataFrame where {T<:AbstractDataFrame}
-  return cloakmissings(df, names(df))
+function cloakmissings(::Type{M}, df::T)::SubDataFrame where {T<:AbstractDataFrame, M<:AbstractMatrix}
+  return cloakmissings(M, df, names(df))
 end
 
 #####################FMQR Type###########################
@@ -219,7 +216,7 @@ function FMLM(df::AbstractDataFrame,  Xexpr::FMExpr, Ysym::Symbol,
     sdf::SubDataFrame = view(df[!, sarray], 1:size(df,1), :)
     #println("flag1")
     if containsmissings    # if we are going to drop nulls
-      sdf = cloakmissings(sdf)
+      sdf = cloakmissings(M, sdf)
     end
 
     #get the within and clustering symbols
@@ -240,7 +237,7 @@ function FMLM(df::AbstractDataFrame,  Xexpr::FMExpr, Ysym::Symbol,
     #println("flag3")
 
     #get the factor expanded model matrix (Adds the dummies)
-    Xmodelmatrix = generateX(sdf, Xexpr)
+    Xmodelmatrix = generateX(M, sdf, Xexpr)
     Y = sdf[!, Ysym]
 
     #println("flag41")
@@ -542,100 +539,6 @@ homoskedasticΣslow(lin::FMLM{M where M<:AbstractMatrix}) =
   homoskedasticΣslow(lin.X, lin.Y.-lin.X * lin.β)::M
 
 
-#########################getNeweyWest ##########OLS Only
-#NOTE: To match Sandwich NeweyWest in R, set prewhite = FALSE, adjust = TRUE
-getNeweyWest!(args...; keyargs...) = error("use neweywestΣ! instead")
-
-function neweywestΣ!(X::M, xqr::FMQR{M}, ε::V, lag::Int,
-  Σ::M = M(undef, xqr.K, xqr.K),
-  dofcorrect::Float64 = 1.0)::M where {M<:AbstractMatrix, V<:AbstractVector}
-
-  #pre-allocate for the spectral matrix
-
-  #NOTE: we need to switch away from gpu arrays due to the lagging
-  #that is, views don't seem to work properly on gpu matrices
-  T::Type = eltype(M)
-  Rv::Matrix{T} = Matrix{T}(undef, xqr.K, xqr.K) #pre-allocate working matrix
-  RRinv::Matrix{T} = BLAS.gemm('N', 'T', xqr.Rinv, xqr.Rinv) #this is equivelent to [X'X]^-1
-
-  #need to multiply through by the error
-  Xe::Matrix{T} = X .* ε
-  ST::Matrix{T} = BLAS.gemm('T','N',T(1.0/xqr.N), Xe, Xe)
-  for v::Int ∈ 1:lag
-    #overwrites Rv with (1/N)R'R
-    BLAS.gemm!('T', 'N', T(1.0/xqr.N), view(Xe, (v+1):(xqr.N), :),view(Xe, 1:(xqr.N-v), :), T(0.0), Rv)
-    #Rv .= view(Xe, (v+1):(xqr.N), :)' * view(Xe, 1:(xqr.N-v), :) .* (1.0/xqr.N)
-    ST += (lag + 1 - v)/(lag+1.) .* (Rv .+ Rv')
-  end
-
-  #this is [X'X]^-1S=[R'R]^-1S
-  RRinvS::Matrix{T} = BLAS.gemm('N', 'N', RRinv, ST)
-
-  #finally we have T[X'X]^-1S[X'X]^-1
-  if M<:Matrix{Float64}
-    BLAS.gemm!('N','N',Float64(xqr.N), RRinvS, RRinv, 0.0, Σ)
-  else
-    Σ = BLAS.gemm('N','N',T(xqr.N), RRinvS, RRinv)
-  end
-
-
-  Σ .*= dofcorrect
-  #println("$(diag(Σ .* dofcorrect))")sasa
-  return Σ
-end
-
-
-function neweywestΣ!(lin::FMLM, lag::Int,
-  Σ::M = M(undef, lin.K, lin.K))::M where M<: AbstractMatrix
-
-  return neweywestΣ!(lin.X, lin.xqr, lin.ε, lag, Σ, lin.N/lin.dof)
-end
-
-#helper function in case the input requires a single argument function
-getNeweyWestFunc(args...; keyargs...) = error("use neweywestΣfunc instead")
-neweywestΣfunc(lag::Int) = (lin::FMLM)-> neweywestΣ!(lin, lag)
-
-#testing for NeweyWest
-#NOTE: assumes dofcorrect value
-getNeweyWestSlow(args...; keyargs...) = error("use neweywestΣslow instead")
-function neweywestΣslow(X::M, ε::V, lag::Int, dofcorrect::Float64
-    )  where {M<:AbstractMatrix, V<:AbstractVector}
-
-  N::Int, K::Int = size(X)
-  (M<:CuArray) && CuArrays.allowscalar(true) #don't care about performance here
-
-  #first form the spectral matrix
-
-  #initial value for spectral matrix
-  xxt::Matrix = zeros(K,K)
-  for t::Int ∈ 1:N
-    xxt .+= (X[t, :] * X[t, :]') .* ε[t]^2
-  end
-  ST::Matrix =  xxt ./ N
-
-  #make the rest of the spectral matrix
-  for v::Int ∈ 1:lag
-    xxt .= zeros(K,K)
-    for t::Int ∈ (1+v):(N)
-      xxt .+= (X[t, :] * X[t-v, :]') .* ε[t]*ε[t-v]
-    end
-    xxt ./= N
-    ST .+= (lag + 1. - v)/(lag + 1.) .* (xxt .+ xxt')
-  end
-
-  XXinv::Matrix = Matrix(X' * X) \ I
-
-  ret::M = N*XXinv*ST* XXinv
-  (M<:CuArray) && CuArrays.allowscalar(false) #don't care about performance here
-  return ret * dofcorrect
-end
-
-
-
-neweywestΣslow(lin::FMLM, lag::Int) = neweywestΣslow(lin.X, lin.Y .- lin.X * lin.β, lag, lin.N/lin.dof)
-
-getNeweyWestFuncSlow(args...; keyargs...) = error("use neweywestΣslow instead")
-neweywestΣfuncslow(lag::Int)::Function = (lin::FMLM)-> neweywestΣslow(lin, lag)
 ###################getWhiteERRORs ###OLS only
 
 getWhiteΣ!(args...; keyargs...) = error("use whiteΣ! instead")
@@ -792,3 +695,212 @@ end
 #Convenience method for above: IN: A linear model #OUT: A covariance matrix
 modifiedwhiteΣslow(lin::FMLM, dofcorrect::Float64 = lin.N/lin.dof) = modifiedwhiteΣslow(
   lin.X, lin.Y.-lin.X * lin.β, dofcorrect)
+
+  #########################getNeweyWest ##########OLS Only
+  #NOTE: To match Sandwich NeweyWest in R, set prewhite = FALSE, adjust = TRUE
+  getNeweyWest!(args...; keyargs...) = error("use neweywestΣ! instead")
+
+  function neweywestΣ!(X::M, xqr::FMQR{M}, ε::V, lag::Int,
+    Σ::M = M(undef, xqr.K, xqr.K),
+    dofcorrect::Float64 = 1.0)::M where {M<:AbstractMatrix, V<:AbstractVector}
+
+    #pre-allocate for the spectral matrix
+
+    #NOTE: we need to switch away from gpu arrays due to the lagging
+    #that is, views don't seem to work properly on gpu matrices
+    T::Type = eltype(M)
+    Rv::Matrix{T} = Matrix{T}(undef, xqr.K, xqr.K) #pre-allocate working matrix
+    RRinv::Matrix{T} = BLAS.gemm('N', 'T', xqr.Rinv, xqr.Rinv) #this is equivelent to [X'X]^-1
+
+    #need to multiply through by the error
+    Xe::Matrix{T} = X .* ε
+    ST::Matrix{T} = BLAS.gemm('T','N',T(1.0/xqr.N), Xe, Xe)
+    for v::Int ∈ 1:lag
+      #overwrites Rv with (1/N)R'R
+      BLAS.gemm!('T', 'N', T(1.0/xqr.N), view(Xe, (v+1):(xqr.N), :),view(Xe, 1:(xqr.N-v), :), T(0.0), Rv)
+      #Rv .= view(Xe, (v+1):(xqr.N), :)' * view(Xe, 1:(xqr.N-v), :) .* (1.0/xqr.N)
+      ST += (lag + 1 - v)/(lag+1.) .* (Rv .+ Rv')
+    end
+
+    #this is [X'X]^-1S=[R'R]^-1S
+    RRinvS::Matrix{T} = BLAS.gemm('N', 'N', RRinv, ST)
+
+    #finally we have T[X'X]^-1S[X'X]^-1
+    if M<:Matrix{Float64}
+      BLAS.gemm!('N','N',Float64(xqr.N), RRinvS, RRinv, 0.0, Σ)
+    else
+      Σ = BLAS.gemm('N','N',T(xqr.N), RRinvS, RRinv)
+    end
+
+
+    Σ .*= dofcorrect
+    #println("$(diag(Σ .* dofcorrect))")sasa
+    return Σ
+  end
+
+
+  function neweywestΣ!(lin::FMLM, lag::Int,
+    Σ::M = M(undef, lin.K, lin.K))::M where M<: AbstractMatrix
+
+    return neweywestΣ!(lin.X, lin.xqr, lin.ε, lag, Σ, lin.N/lin.dof)
+  end
+
+  #helper function in case the input requires a single argument function
+  getNeweyWestFunc(args...; keyargs...) = error("use neweywestΣfunc instead")
+  neweywestΣfunc(lag::Int) = (lin::FMLM)-> neweywestΣ!(lin, lag)
+
+  #testing for NeweyWest
+  #NOTE: assumes dofcorrect value
+  getNeweyWestSlow(args...; keyargs...) = error("use neweywestΣslow instead")
+  function neweywestΣslow(X::M, ε::V, lag::Int, dofcorrect::Float64
+      )  where {M<:AbstractMatrix, V<:AbstractVector}
+
+    N::Int, K::Int = size(X)
+    (M<:CuArray) && CuArrays.allowscalar(true) #don't care about performance here
+
+    #first form the spectral matrix
+
+    #initial value for spectral matrix
+    xxt::Matrix = zeros(K,K)
+    for t::Int ∈ 1:N
+      xxt .+= (X[t, :] * X[t, :]') .* ε[t]^2
+    end
+    ST::Matrix =  xxt ./ N
+
+    #make the rest of the spectral matrix
+    for v::Int ∈ 1:lag
+      xxt .= zeros(K,K)
+      for t::Int ∈ (1+v):(N)
+        xxt .+= (X[t, :] * X[t-v, :]') .* ε[t]*ε[t-v]
+      end
+      xxt ./= N
+      ST .+= (lag + 1. - v)/(lag + 1.) .* (xxt .+ xxt')
+    end
+
+    XXinv::Matrix = Matrix(X' * X) \ I
+
+    ret::M = N*XXinv*ST* XXinv
+    (M<:CuArray) && CuArrays.allowscalar(false) #don't care about performance here
+    return ret * dofcorrect
+  end
+
+
+
+  neweywestΣslow(lin::FMLM, lag::Int) = neweywestΣslow(lin.X, lin.Y .- lin.X * lin.β, lag, lin.N/lin.dof)
+
+  getNeweyWestFuncSlow(args...; keyargs...) = error("use neweywestΣslow instead")
+  neweywestΣfuncslow(lag::Int)::Function = (lin::FMLM)-> neweywestΣslow(lin, lag)
+
+  ######################Panel Newy-West#######################
+function neweywestpanelΣ!(X::M, xqr::FMQR{M}, ε::V, clusters::Vector{C},
+    lag::Int, Σ::M = M(undef, xqr.K, xqr.K))::M where {
+    M<:AbstractMatrix, V<:AbstractVector, C}
+
+  N::Int = length(ε)
+  E::Type = eltype(M)
+
+  K::Int = size(X,2)
+  Sₜ::M = zeros(K,K) #holds teh central matrix
+
+  temp::M = M(undef, K, K) #pre-allocate working matrix
+  RRinv::M = BLAS.gemm('N', 'T', xqr.Rinv, xqr.Rinv) #this is equivelent to [X'X]^-1
+
+  cvars::Vector{C} = unique(clusters)
+  cindex::Dict = Dict(cvar => clusters .== cvar for cvar ∈ cvars)
+
+  #iterate over all stocks
+  for cvar ∈ cvars
+    Xₙ::SubArray = view(X, cindex[cvar], :)
+    εₙ::SubArray = view(ε, cindex[cvar])
+
+    #need to multiply through by the error
+    T::Int = length(εₙ)
+    Xₑ::M = Xₙ .* εₙ
+
+    Sₜ .+= BLAS.gemm('T','N',  E(1.0/N), Xₑ, Xₑ)
+
+    for v::Int ∈ 1:lag
+      #overwrites temp with (1/N)R'R
+      BLAS.gemm!('T', 'N',   E(1.0/N), view(Xₑ, (v+1):T, :),view(Xₑ, 1:(T-v), :),   E(0.0), temp)
+      Sₜ .+= (lag + 1 - v)/(lag+1.) .* (temp .+ temp')
+    end
+
+  end
+  #Sₜ = Matrix{Float64}(I,K,K)
+  #this is [X'X]^-1S=[R'R]^-1S
+  RRinvS::M = BLAS.gemm('N', 'N', RRinv, Sₜ)
+
+  #display(RRinv)
+
+  #finally we have T[X'X]^-1S[X'X]^-1
+  BLAS.gemm!('N','N', E(N), RRinvS, RRinv, E(0.0), Σ)
+  #println("$(diag(Σ .* dofCorrect))")sasa
+  return Σ
+end
+
+function neweywestpanelΣ!(lin::FMLM{M,V}, lag::Int,
+  Σ::M = M(undef, lin.K, lin.K))::M where {M<: AbstractMatrix, V<:AbstractVector}
+
+  return neweywestpanelΣ!(lin.X, lin.xqr, lin.ε, lin.clusters, lag, Σ)
+end
+
+
+neweywestΣfunc(lag::Int) = (lin::FMLM)-> neweywestpanelΣ!(lin, lag)
+
+
+function neweywestpanelΣslow!(X::M, xqr::FMQR{M}, ε::V, clusters::Vector{C},
+    lag::Int, Σ::M = M(undef, xqr.K, xqr.K))::M where {
+    M<:AbstractMatrix, V<:AbstractVector, C}
+
+  N::Int = size(X,1)
+  K::Int = size(X,2)
+  T::Type = eltype(M)
+
+  #pre-allocate
+  Sₜ::M = zeros(K, K)
+
+  #this method requires a sorted array
+  #will do this via dataframes
+  df::DataFrame = DataFrame(deepcopy(X))
+  xnames = names(df)
+  df.clusters = deepcopy(clusters)
+  df.ε = deepcopy(ε)
+
+  sort!(df, :clusters)
+  X = M(df[!, xnames])
+  ε = V(df.ε)
+  clusters = df.clusters
+
+  #helper function using the Lars method
+  for t ∈ 1:N
+    Sₜ .+= X[t,:] * X[t,:]' * ε[t]^2
+  end
+
+  for v::Int ∈ 1:lag
+    for t ∈ (v+1):N
+      (clusters[t] == clusters[t-v]) && (
+        Sₜ .+= (lag + 1 - v)/(lag+1.) .* (X[t,:] * X[t-v,:]' .+ X[t-v,:] * X[t,:]') * ε[t] * ε[t-v])
+    end
+  end
+  Sₜ ./= N
+  #Sₜ = Matrix{Float64}(I,K,K)
+
+  #the final step is to multiply out the var-covar sandwhich
+  RRinv::M = BLAS.gemm('N', 'T', xqr.Rinv, xqr.Rinv) #this is equivelent to [X'X]^-1
+
+  #this is [X'X]^-1S=[R'R]^-1S
+  RRinvS::M= BLAS.gemm('N', 'N', RRinv, Sₜ)
+
+  #finally we have T[X'X]^-1S[X'X]^-1
+  BLAS.gemm!('N','N',T(N), RRinvS, RRinv, T(0.0), Σ)
+
+  return Σ
+end
+
+function neweywestpanelΣslow!(lin::FMLM{M,V}, lag::Int,
+  Σ::M = M(undef, lin.K, lin.K))::M where {M<: AbstractMatrix, V<:AbstractVector}
+
+  return neweywestpanelΣslow!(lin.X, lin.xqr, lin.ε, lin.clusters, lag, Σ)
+end
+
+neweywestΣslowfunc(lag::Int) = (lin::FMLM)-> neweywestpanelΣslow!(lin, lag)

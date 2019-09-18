@@ -388,6 +388,15 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     println("\nNW Errors: ",diag(ΣNW).^.5)
     println("Check: ", diag(ΣNWSlow).^.5)
 
+    #get the nw SEs
+    ΣNWpanel::Matrix{Float64} = similar(ΣHomosked)
+    Finometrics.neweywestpanelΣ!(lin, 3, ΣNWpanel)
+    ΣNWpanelslow::Matrix{Float64} = Finometrics.neweywestpanelΣslow!(lin, 3)
+
+    #print the coefficients
+    println("\nNW panel Errors: ",diag(ΣNWpanel).^.5)
+    println("Check: ", diag(ΣNWpanelslow).^.5)
+
 
     #test the project routines
     Pa::V = V(undef, N)
@@ -413,7 +422,7 @@ end
 #LMtest(CuMatrix{Float32}, CuVector{Float32}, N=1_000)
 #@time LMtest(CuMatrix{Float32}, CuVector{Float32}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
 #CuArrays.allowscalar(false)
-@time LMtest(CuMatrix{Float64}, CuVector{Float64}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
+@time LMtest(Matrix{Float64}, Vector{Float64}, N=1000, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
 
 #@time rapidreg(CuMatrix{Float32}, CuVector{Float32}, iter=700, N=2_000_000, K=200,
 #  qrtype=CuMatrix{Float32}) #, qrtype=CuMatrix{Float32})
