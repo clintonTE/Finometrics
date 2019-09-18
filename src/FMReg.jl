@@ -739,8 +739,8 @@ modifiedwhiteΣslow(lin::FMLM, dofcorrect::Float64 = lin.N/lin.dof) = modifiedwh
   end
 
 
-  function neweywestΣ!(lin::FMLM, lag::Int,
-    Σ::M = M(undef, lin.K, lin.K))::M where M<: AbstractMatrix
+  function neweywestΣ!(lin::FMLM{M,V}, lag::Int,
+    Σ::M = M(undef, lin.K, lin.K))::M where {M<: AbstractMatrix, V<:AbstractVector}
 
     return neweywestΣ!(lin.X, lin.xqr, lin.ε, lag, Σ, lin.N/lin.dof)
   end
