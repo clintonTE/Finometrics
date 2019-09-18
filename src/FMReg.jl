@@ -262,31 +262,38 @@ function FMLM(df::AbstractDataFrame,  Xexpr::FMExpr, Ysym::Symbol,
 
     #get the appropriate matrices and construct the FMLM object
 
-    if withinsym != nothing
+    if (withinsym != nothing) && (!checkwithin)
         return FMLM(Xmodelmatrix, Y,
           within, clusters = clusters,
             Xnames=Xnamesfull, Yname=Yname, qrtype=qrtype)
-    elseif (!checkwithin)
+    elseif (withinsym != nothing) && (checkwithin)
       #  println("flag3b")
-        return FMLM(Xmodelmatrix,
-            Y, clusters = clusters,
+        return FMLMslowwithin(Xmodelmatrix,
+            Y, within, clusters = clusters,
             Xnames=Xnamesfull, Yname=Yname, qrtype=qrtype)
     else
-      #  println("flag3b")
-        return FMLMold(Xmodelmatrix,
-            Y, clusters = clusters,
-            Xnames=Xnamesfull, Yname=Yname, qrtype=qrtype)
+      #println("flag3b")
+      return FMLM(Xmodelmatrix,
+          Y, clusters = clusters,
+          Xnames=Xnamesfull, Yname=Yname, qrtype=qrtype)
     end
 
 end
 
+
 #transforms the data using the within estimator, including an adjustment to dof
-function FMLM(X::M, Y::V, within::Vector{W};
+function FMLM(X::M, Y::V, within::AbstractVector{W};
     clusters::Vector{C} = [nothing],
     Xnames::Vector{Symbol} = (Symbol).(:X, 1:size(X,2)),
     Yname::Symbol = :Y,
     qrtype::Type = M)::FMLM where {
       W<:FMData, C<:FMData, M<:AbstractMatrix, V<:AbstractVector}
+
+    Xmat::Matrix{Float64} = X
+    Yvec::Vector{Float64} = Y
+
+    #@info "Using legacy within algorithm"
+
 
     #println("flag4")
     #we get the unique values and make a two way table
@@ -294,9 +301,6 @@ function FMLM(X::M, Y::V, within::Vector{W};
     ivars::Vector{W} = unique(within)
     iN::Int = length(ivars)
     itable::Dict{W,Int} = Dict{W,Int}(ivars[i] => i for i::Int ∈ 1:iN)
-    iindex::Dict{W,Vector{Bool}} = Dict(iv=> within.==iv for iv ∈ ivars)
-    iXindex::Dict{W,SubArray} = Dict(iv=>view(X, iindex[iv], :) for iv ∈ ivars)
-    iYindex::Dict{W,SubArray} = Dict(iv=>view(Y, iindex[iv]) for iv ∈ ivars)
 
     K::Int = size(X,2)
     N::Int = size(X,1)
@@ -309,69 +313,79 @@ function FMLM(X::M, Y::V, within::Vector{W};
     NXY::Vector{Int} = zeros(iN)
 
     #println("$N,$K,$iN,$(size(NXY))")
-    @fastmath for (i::Int, iv::W) ∈ enumerate(ivars)
-      meanY::Float64 = mean(iYindex[iv])
-      meanX::M = mean(iXindex[iv], dims=1) #This is actually a row vector
-      meanX[1] = 0.0 #WARNING: Assumes first column is the intercept
-
-      iYindex[iv] .-= meanY
-      iXindex[iv] .-= meanX
+    @fastmath for r::Int ∈ 1:N
+      meanXY[withincode[r],K+1] += Yvec[r]
+      NXY[withincode[r]] += 1.0
     end
 
+    @fastmath for c::Int ∈2:K, r ∈1:N
+      meanXY[withincode[r],c] += Xmat[r,c]
+    end
+
+    meanXY ./= NXY
+
+    @fastmath for c::Int ∈2:K, r::Int ∈1:N
+      Xmat[r,c] -= meanXY[withincode[r],c]
+    end
+
+    @fastmath for r::Int ∈ 1:N
+      Yvec[r] -= meanXY[withincode[r],K+1]
+    end
+
+    X = Xmat
+    Y = Yvec
 
     return FMLM(X, Y,
       clusters=clusters, Xnames=Xnames, Yname=Yname,
       dof = N - iN - K, qrtype=qrtype)
 end
 
-function FMLMold(X::M, Y::V, within::AbstractVector{W};
+#transforms the data using the within estimator, including an adjustment to dof
+function FMLMslowwithin(X::M, Y::V, within::Vector{W};
     clusters::Vector{C} = [nothing],
     Xnames::Vector{Symbol} = (Symbol).(:X, 1:size(X,2)),
     Yname::Symbol = :Y,
     qrtype::Type = M)::FMLM where {
       W<:FMData, C<:FMData, M<:AbstractMatrix, V<:AbstractVector}
 
-    if M<:CuArray
-      error("Cluster code needs overhaul for effective gpu usage")
-    end
-
-
     #println("flag4")
     #we get the unique values and make a two way table
     #tVars::Vector{T} = unique(tFI)
     ivars::Vector{W} = unique(within)
     iN::Int = length(ivars)
-    itable::Dict{W,Int} = Dict{W,Int}(ivars[i] => i for i::Int ∈ 1:iN)
+
+    #perposefully do not use a copy command, since we are looking to replace original elements
+    Xmat::Matrix{Float64} = X
+    Yvec::Vector{Float64} = Y
 
     K::Int = size(X,2)
     N::Int = size(X,1)
 
-    #now create the codified versions
-    #Xi::Matrix{Float64} = Matrix{Float64}(length(ivars),size(X,2))
-    withincode::Vector{Int} = ((x::W)->itable[x]).(within)
-
-    meanXY::Matrix{Float64} = zeros(iN,K+1)
-    NXY::Vector{Int} = zeros(iN)
 
     #println("$N,$K,$iN,$(size(NXY))")
-    @fastmath for r::Int ∈ 1:N
-      meanXY[withincode[r],K+1] += Y[r]
-      NXY[withincode[r]] += 1.0
+    #warning change these if multi-threading
+    meanX::Matrix{Float64} = Matrix{Float64}(undef, 1,K) #WARNING:
+    local sX::SubArray
+    local sY::SubArray
+    iindex::Vector{Bool} = Vector{Bool}(undef, length(within))
+
+    @fastmath for (i::Int, iv::W) ∈ enumerate(ivars)
+
+      iindex .= within.==ivars[i]
+      sX=  view(Xmat, iindex, :)
+      sY =  view(Yvec, iindex)
+
+      meanY::Float64 = mean(sY)
+      meanX .= mean(sX, dims=1) #This is actually a row vector
+      meanX[1] = 0.0 #WARNING: Assumes first column is the intercept
+
+      sY .-= meanY
+      sX .-= meanX
     end
 
-    @fastmath for c::Int ∈2:K, r ∈1:N
-      meanXY[withincode[r],c] += X[r,c]
-    end
+    X = Xmat
+    Y = Yvec
 
-    meanXY ./= NXY
-
-    @fastmath for c::Int ∈2:K, r::Int ∈1:N
-      X[r,c] -= meanXY[withincode[r],c]
-    end
-
-    @fastmath for r::Int ∈ 1:N
-      Y[r] -= meanXY[withincode[r],K+1]
-    end
 
     return FMLM(X, Y,
       clusters=clusters, Xnames=Xnames, Yname=Yname,

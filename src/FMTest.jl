@@ -298,9 +298,11 @@ using Distributions, LinearAlgebra, CuArrays, DataFrames
 
 function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     N::Int = 200, K::Int = 2, testerrors::Bool = true,
-    qrtype::Type = M) where {
+    qrtype::Type = M, iter::Int = 1, testprimarywithin::Bool = false) where {
     M<:AbstractMatrix, V<:AbstractVector}
 
+
+  local lin::Finometrics.FMLM
 
   #Allocate
   X::M = M(undef, N,K)
@@ -337,13 +339,19 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
 
   #get the linear model
   xspec = Meta.parse(join((string).(xnames),"+"))
-  lin::Finometrics.FMLM = Finometrics.FMLM(df, xspec, :Y, withinsym=:G, clustersym=:C)
+
+  print("Time running primary regression...")
+  @time for i ∈ 1:iter
+    lin = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:G,
+      clustersym=:C, qrtype=qrtype, checkwithin=testprimarywithin, containsmissings=false)
+  end
 
   if testerrors
     #get the homoskedastic SEs
     ΣHomosked::Matrix{Float64} = Finometrics.homoskedasticΣ!(lin)
     ΣHomoskedSlow::Matrix{Float64} = Finometrics.homoskedasticΣ!(lin)
-    linchkwithin::Finometrics.FMLM = Finometrics.FMLM(df, xspec, :Y, withinsym=:G, clustersym=:C, checkwithin=true)
+    linchkwithin::Finometrics.FMLM = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:G,
+      clustersym=:C, checkwithin=true, qrtype=qrtype)
     ΣHomoskedalt::Matrix{Float64} = Finometrics.homoskedasticΣ!(linchkwithin)
 
     #print the coefficients
@@ -415,14 +423,15 @@ end
 
 function rapidreg(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     iter::Int = 100, N::Int = 10_000, K::Int = 2, testerrors::Bool = true,
-    qrtype::Type = M) where {M<:AbstractMatrix, V<:AbstractVector}
+    qrtype::Type = M, testprimarywithin=false) where {M<:AbstractMatrix, V<:AbstractVector}
 
-  LMtest(M, V, N=N, testerrors=false, K=K, qrtype=qrtype)
+  LMtest(M, V, N=N, testerrors=false, testprimarywithin=testprimarywithin, K=K, qrtype=qrtype, iter=iter)
 end
 #LMtest(CuMatrix{Float32}, CuVector{Float32}, N=1_000)
 #@time LMtest(CuMatrix{Float32}, CuVector{Float32}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
 #CuArrays.allowscalar(false)
-@time LMtest(Matrix{Float64}, Vector{Float64}, N=1000, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
+@time LMtest(Matrix{Float64}, Vector{Float64}, N=1000, testerrors=true, K=10, testprimarywithin=false)#, qrtype=CuMatrix{Float32})
 
-#@time rapidreg(CuMatrix{Float32}, CuVector{Float32}, iter=700, N=2_000_000, K=200,
-#  qrtype=CuMatrix{Float32}) #, qrtype=CuMatrix{Float32})
+#CuArrays.allowscalar(false)
+#@time rapidreg(Matrix{Float64}, Vector{Float64}, iter=10, N=1_000_000, K=10,
+#  qrtype=Matrix{Float64}, testprimarywithin = true)
