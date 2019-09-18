@@ -75,6 +75,10 @@ export FMLM, #Regression methods
   R²,
   neweywestΣfunc,
   neweywestΣfuncslow,
+  neweywestpanelΣ!,
+  neweywestpanelΣslow!,
+  neweywestpanelΣfunc,
+  neweywestpanelΣslowfunc,
   clusteredΣ!,
 
 

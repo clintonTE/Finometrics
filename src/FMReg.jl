@@ -845,7 +845,7 @@ function neweywestpanelΣ!(lin::FMLM{M,V}, lag::Int,
 end
 
 
-neweywestΣfunc(lag::Int) = (lin::FMLM)-> neweywestpanelΣ!(lin, lag)
+neweywestpanelΣfunc(lag::Int) = (lin::FMLM)-> neweywestpanelΣ!(lin, lag)
 
 
 function neweywestpanelΣslow!(X::M, xqr::FMQR{M}, ε::V, clusters::Vector{C},
