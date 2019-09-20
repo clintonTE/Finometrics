@@ -41,8 +41,9 @@ function homoskedasticΣslow(X::M, ε::V)::M where {M<:AbstractMatrix, V<:Abstra
 end
 
 #Convenience method for above: IN: A linear model #OUT: A covariance matrix
-homoskedasticΣslow(lin::FMLM{M where M<:AbstractMatrix}) =
-  homoskedasticΣslow(lin.X, lin.Y.-lin.X * lin.β)::M
+function homoskedasticΣslow(lin::FMLM{M, V}) where {M<:AbstractMatrix, V<:AbstractVector}
+  return homoskedasticΣslow(lin.X, lin.Y.-lin.X * lin.β)::M
+end
 
 
 ###################getWhiteERRORs ###OLS only
@@ -141,18 +142,17 @@ function clusteredΣ!(lin::FMLM{M, V}, Σ₁::M = M(undef, lin.K, lin.K);
     Σ₃::M = similar(Σ₁)
 
     #create the intersection of the clusters
+
     cluster⋂::Vector{Symbol} = ((s1, s2)->
       Symbol(string(s1),"_∩_",string(s2))).(clusters[1],clusters[2])
 
     #get the remaining clusters
     clusteredΣ!(lin.X, lin.xqr, lin.ε, clusters[2], Σ₂, lin.dof)
-    clusteredΣ!(lin.X, lin.xqr, lin.ε, cluster⋂, Σ₃, lin.dof)
-
-    Σ₁ .= Σ₁ .+ Σ₂ .- Σ₃
 
     #may verify the equivelance of white Σ and the cluster intersection Σ in the case where
     #cluster 1 within cluster 2 accounts for all variation (e.g. combination of clusters is unique)
     if testequivelance
+      clusteredΣ!(lin.X, lin.xqr, lin.ε, cluster⋂, Σ₃, lin.dof)
       if length(unique(cluster⋂)) ≠ length(cluster⋂)
         @warn "Note: cluster intersection not unique. White results will not reconcile."
       end
@@ -162,7 +162,15 @@ function clusteredΣ!(lin::FMLM{M, V}, Σ₁::M = M(undef, lin.K, lin.K);
       whiteΣ!(lin.xqr, lin.ε, Σ₃, lin.N/lin.dof)
       println("White version:")
       display(Σ₃)
+    else #standard case
+      if length(unique(cluster⋂)) == length(cluster⋂)
+        whiteΣ!(lin.xqr, lin.ε, Σ₃, lin.N/lin.dof)
+      else
+        clusteredΣ!(lin.X, lin.xqr, lin.ε, cluster⋂, Σ₃, lin.dof)
+      end
     end
+
+    Σ₁ .= Σ₁ .+ Σ₂ .- Σ₃
 
   end
 

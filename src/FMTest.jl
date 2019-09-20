@@ -298,7 +298,7 @@ using Distributions, LinearAlgebra, CuArrays, DataFrames
 
 function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     N::Int = 200, K::Int = 2, testerrors::Bool = true,
-    qrtype::Type = M, iter::Int = 1, testprimarywithin::Bool = false) where {
+    qrtype::Type = M, iter::Int = 1, testprimarywithin::Bool = false, runslow::Bool = true) where {
     M<:AbstractMatrix, V<:AbstractVector}
 
 
@@ -350,7 +350,7 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
   if testerrors
     #get the homoskedastic SEs
     ΣHomosked::Matrix{Float64} = Finometrics.homoskedasticΣ!(lin)
-    ΣHomoskedSlow::Matrix{Float64} = Finometrics.homoskedasticΣ!(lin)
+    runslow && (ΣHomoskedSlow::Matrix{Float64} = Finometrics.homoskedasticΣslow(lin))
     linalt::Finometrics.FMLM = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:G,
       clustersyms=[:C1, :C2], checkwithin=true, qrtype=qrtype)
     ΣHomoskedalt::Matrix{Float64} = Finometrics.homoskedasticΣ!(linalt)
@@ -360,26 +360,26 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     println("Coefficients (alt w/in): ",linalt.β)
 
     println("\nHomoskedastic Errors: ", diag(ΣHomosked).^.5)
-    println("Check: ", diag(ΣHomoskedSlow).^.5)
+    runslow && println("Check: ", diag(ΣHomoskedSlow).^.5)
     println("Homoskedastic Errors (alt w/in): ", diag(ΣHomoskedalt).^.5)
 
     #get the modified white SEs
     ΣMWhite::Matrix{Float64} = similar(ΣHomosked)
     Finometrics.modifiedwhiteΣ!(lin, ΣMWhite)
-    ΣMWhiteSlow::Matrix{Float64} = Finometrics.modifiedwhiteΣslow(lin)
+    runslow && (ΣMWhiteSlow::Matrix{Float64} = Finometrics.modifiedwhiteΣslow(lin))
 
     #print the coefficients
     println("\nModified White Errors: ",diag(ΣMWhite).^.5)
-    println("Check: ", diag(ΣMWhiteSlow).^.5)
+    runslow && println("Check: ", diag(ΣMWhiteSlow).^.5)
 
     #get the white SEs
     ΣWhite::Matrix{Float64} = similar(ΣHomosked)
     Finometrics.whiteΣ!(lin, ΣWhite)
-    ΣWhiteSlow::Matrix{Float64} = Finometrics.whiteΣslow(lin)
+    runslow && (ΣWhiteSlow::Matrix{Float64} = Finometrics.whiteΣslow(lin))
 
     #print the coefficients
     println("\nWhite Errors: ",diag(ΣWhite).^.5)
-    println("Check: ", diag(ΣWhiteSlow).^.5)
+    runslow && println("Check: ", diag(ΣWhiteSlow).^.5)
 
     #get the modified white SEs
     Σclustered::Matrix{Float64} = similar(ΣHomosked)
@@ -390,41 +390,43 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
 
     linalt2 = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:G,
       clustersyms=[:C1,:C2], qrtype=qrtype, checkwithin=testprimarywithin, containsmissings=false)
-    Finometrics.clusteredΣ!(linalt2, Σclustered, clusters = [linalt2.clusters[1]], testequivelance=true)    
-    Finometrics.clusteredΣ!(linalt2, Σclustered, testequivelance=true)
+    #Finometrics.clusteredΣ!(linalt2, Σclustered, clusters = [linalt2.clusters[1]], testequivelance=true)
+
+    print("time 2x cluster:")
+    @time Finometrics.clusteredΣ!(linalt2, Σclustered, testequivelance=runslow)
 
 
     #get the nw SEs
     ΣNW::Matrix{Float64} = similar(ΣHomosked)
     Finometrics.neweywestΣ!(lin, 3, ΣNW)
-    ΣNWSlow::Matrix{Float64} = Finometrics.neweywestΣslow(lin, 3)
+    runslow && (ΣNWSlow::Matrix{Float64} = Finometrics.neweywestΣslow(lin, 3))
 
     #print the coefficients
     println("\nNW Errors: ",diag(ΣNW).^.5)
-    println("Check: ", diag(ΣNWSlow).^.5)
+    runslow && println("Check: ", diag(ΣNWSlow).^.5)
 
     #get the nw SEs
     ΣNWpanel::Matrix{Float64} = similar(ΣHomosked)
     Finometrics.neweywestpanelΣ!(lin, 3, ΣNWpanel)
-    ΣNWpanelslow::Matrix{Float64} = Finometrics.neweywestpanelΣslow!(lin, 3)
+    runslow && (ΣNWpanelslow::Matrix{Float64} = Finometrics.neweywestpanelΣslow!(lin, 3))
 
     #print the coefficients
     println("\nNW panel Errors: ",diag(ΣNWpanel).^.5)
-    println("Check: ", diag(ΣNWpanelslow).^.5)
+    runslow && println("Check: ", diag(ΣNWpanelslow).^.5)
 
 
     #test the project routines
     Pa::V = V(undef, N)
     PM::M = M(undef, N,N)
-    PS::M = M(undef, N,N)
+    runslow && (PS::M = M(undef, N,N))
 
     Finometrics.project!(X,PM)
     Finometrics.project!(X,Pa)
 
-    Finometrics.projectslow!(X, PS)
+    runslow && Finometrics.projectslow!(X, PS)
     println("\nP: ", Pa[1:5])
     println("P (from full matrix): ", PM[1:3,1:3])
-    println("P Slow: ", diag(PS)[1:10])
+    runslow && println("P Slow: ", diag(PS)[1:10])
   end
 end
 
@@ -437,7 +439,8 @@ end
 #LMtest(CuMatrix{Float32}, CuVector{Float32}, N=1_000)
 #@time LMtest(CuMatrix{Float32}, CuVector{Float32}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
 #CuArrays.allowscalar(false)
-@time LMtest(Matrix{Float64}, Vector{Float64}, N=1000, testerrors=true, K=10, testprimarywithin=false)#, qrtype=CuMatrix{Float32})
+@time LMtest(Matrix{Float64}, Vector{Float64},
+  N=100_000, testerrors=true, K=10, testprimarywithin=false, runslow=false)#, qrtype=CuMatrix{Float32})
 
 #CuArrays.allowscalar(false)
 #@time rapidreg(Matrix{Float64}, Vector{Float64}, iter=10, N=1_000_000, K=10,
