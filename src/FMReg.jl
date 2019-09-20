@@ -443,7 +443,9 @@ OUT: Writes and returns the projection matrix=#
 function project!(xqr::FMQR{M}, P::V)::Nothing where {M<:AbstractMatrix, V<:AbstractVector}
   #get the diagonal quickly
   #equivlenet to diag(Q*Q')
-  P .= diag(xqr.Q*xqr.Q')
+  for i ∈ 1:xqr.N
+    P[i] = xqr.Q[i,:] ⋅ xqr.Q[i,:]
+  end
 
   return nothing
 
