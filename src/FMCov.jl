@@ -90,23 +90,24 @@ whiteΣslow(lin::FMLM) = whiteΣslow(lin.X, lin.Y.-lin.X * lin.β, lin.N/lin.dof
 #also provides methedology for multi-way clsutering
 #forumala: [X'X]^-1*B*[X'X]^-1 where B= sum over G (Xg'*εg*εg'*Xg) and g is indexed for G clusters
 getClustered!(args...; keyargs...) = error("use clusteredΣ! instead")
+
 function clusteredΣ!(X::M, xqr::FMQR{M}, ε::V, clusters::C,
     Σ::M = M(undef, xqr.K, xqr.K),
     dof::Int = xqr.N-xqr.K)::M where {M<:AbstractMatrix, V<:AbstractVector, C<:AbstractVector}
 
   #convenience vectors and values
-  cvars::C = unique(clusters)
-  Nclusters::Int = length(cvars)
+  inddf::DataFrame = DataFrame(clusters=clusters, idx = 1:xqr.N)
+  sindfs::GroupedDataFrame = groupby(inddf, :clusters)
+  Nclusters::Int = length(sindfs)
+
   #ctable::Dict = Dict(cvars[i] => i for i::Int ∈ 1:Nclusters)
   #clustercode::Vector{Int} = ((x)->ctable[x]).(clusters)
 
   #iterate through the groups
   B::M = zeros(xqr.K, xqr.K)
-  idx::Vector{Bool} = Vector{Bool}(undef, xqr.N)
-  @fastmath for cvar ∈ cvars
-    idx .= clusters .== cvar
-    Xg::SubArray = view(X, idx, :)
-    ug::SubArray = view(ε, idx)
+  @fastmath for sindf::SubDataFrame ∈ sindfs
+    Xg::SubArray = view(X, sindf.idx, :)
+    ug::SubArray = view(ε, sindf.idx)
     B .+= Xg'*ug*ug'*Xg
   end
 
@@ -122,13 +123,6 @@ function clusteredΣ!(X::M, xqr::FMQR{M}, ε::V, clusters::C,
     Σ = Matrix(BLAS.gemm('N','N',dofcorrect,RRinvB,RRinv))
   end
 
-  #=@fastmath for i ∈ 1:xqr.K
-    if Σ[i,i] < 0.
-      error("Negative variance ($i): $(diag(Σ))")
-    end
-  end=#
-
-  #println("$(diag(Σ))")
   return Σ
 end
 
@@ -165,7 +159,7 @@ function clusteredΣ!(lin::FMLM{M, V}, Σ₁::M = M(undef, lin.K, lin.K);
       println("White version:")
       display(Σ₃)
     else #standard case
-      if length(unique(cluster⋂)) == length(cluster⋂)
+      if length(unique(cluster⋂)) == length(cluster⋂) #special case allowing for performance optimization
         whiteΣ!(lin.xqr, lin.ε, Σ₃, lin.N/lin.dof)
       else
         clusteredΣ!(lin.X, lin.xqr, lin.ε, cluster⋂, Σ₃, lin.dof)
@@ -346,6 +340,7 @@ modifiedwhiteΣslow(lin::FMLM, dofcorrect::Float64 = lin.N/lin.dof) = modifiedwh
   neweywestΣfuncslow(lag::Int)::Function = (lin::FMLM)-> neweywestΣslow(lin, lag)
 
   ######################Panel Newy-West#######################
+
 function neweywestpanelΣ!(X::M, xqr::FMQR{M}, ε::V, clusters::FMClusters,
     lag::Int, Σ::M = M(undef, xqr.K, xqr.K))::M where {
     M<:AbstractMatrix, V<:AbstractVector}
@@ -365,13 +360,14 @@ function neweywestpanelΣ!(X::M, xqr::FMQR{M}, ε::V, clusters::FMClusters,
   temp::M = M(undef, K, K) #pre-allocate working matrix
   RRinv::M = BLAS.gemm('N', 'T', xqr.Rinv, xqr.Rinv) #this is equivelent to [X'X]^-1
 
-  cvars::Vector{C} where C<:FMData = unique(clusters[1])
-  cindex::Dict = Dict(cvar => clusters[1] .== cvar for cvar ∈ cvars)
+  inddf::DataFrame = DataFrame(clusters=clusters[1], idx = 1:xqr.N)
+  sindfs::GroupedDataFrame = groupby(inddf, :clusters)
+  Nclusters::Int = length(sindfs)
 
   #iterate over all stocks
-  for cvar ∈ cvars
-    Xₙ::SubArray = view(X, cindex[cvar], :)
-    εₙ::SubArray = view(ε, cindex[cvar])
+  for sindf::SubDataFrame ∈ sindfs
+    Xₙ::SubArray = view(X, sindf.idx, :)
+    εₙ::SubArray = view(ε, sindf.idx)
 
     #need to multiply through by the error
     T::Int = length(εₙ)

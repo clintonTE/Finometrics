@@ -393,7 +393,7 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     #Finometrics.clusteredΣ!(linalt2, Σclustered, clusters = [linalt2.clusters[1]], testequivelance=true)
 
     print("time 2x cluster:")
-    @time Finometrics.clusteredΣ!(linalt2, Σclustered, testequivelance=runslow)
+    @time Finometrics.clusteredΣ!(linalt2, Σclustered, testequivelance=false)
 
 
     #get the nw SEs
@@ -417,21 +417,22 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
 
     #test the project routines
     Pa::V = V(undef, N)
-    PM::M = M(undef, N,N)
-    runslow && (PS::M = M(undef, N,N))
-
-    Finometrics.project!(X,PM)
     Finometrics.project!(X,Pa)
-
-    runslow && Finometrics.projectslow!(X, PS)
     println("\nP: ", Pa[1:5])
-    println("P (from full matrix): ", PM[1:3,1:3])
-    runslow && println("P Slow: ", diag(PS)[1:10])
+    if N≤10_000 #only run on small samples or we will run out of memory
+      PM::M = M(undef, N,N)
+      runslow && (PS::M = M(undef, N,N))
+
+      Finometrics.project!(X,PM)
+      runslow && Finometrics.projectslow!(X, PS)
+      println("P (from full matrix): ", PM[1:3,1:3])
+      runslow && println("P Slow: ", diag(PS)[1:10])
+    end
   end
 end
 
 function rapidreg(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
-    iter::Int = 100, N::Int = 10_000, K::Int = 2, testerrors::Bool = true,
+    iter::Int = 100, N::Int = 1_000, K::Int = 2, testerrors::Bool = true,
     qrtype::Type = M, testprimarywithin=false) where {M<:AbstractMatrix, V<:AbstractVector}
 
   LMtest(M, V, N=N, testerrors=false, testprimarywithin=testprimarywithin, K=K, qrtype=qrtype, iter=iter)
@@ -440,7 +441,7 @@ end
 #@time LMtest(CuMatrix{Float32}, CuVector{Float32}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
 #CuArrays.allowscalar(false)
 @time LMtest(Matrix{Float64}, Vector{Float64},
-  N=1_000, testerrors=true, K=10, testprimarywithin=false, runslow=false)#, qrtype=CuMatrix{Float32})
+  N=2_000_000, testerrors=true, K=10, testprimarywithin=false, runslow=false)#, qrtype=CuMatrix{Float32})
 
 #CuArrays.allowscalar(false)
 #@time rapidreg(Matrix{Float64}, Vector{Float64}, iter=10, N=1_000_000, K=10,
