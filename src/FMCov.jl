@@ -130,8 +130,9 @@ function clusteredΣ!(X::M, xqr::FMQR{M}, ε::V, clusters::C,
 end
 
 function clusteredΣ!(lin::FMLM{M, V}, Σ₁::M = M(undef, lin.K, lin.K);
-    clusters::FMClusters = lin.clusters, #allows for an override on the standard errors
+    clusters::Vector{<:Vector}#=Union{FMClusters, Vector{<:FMData}}=# = lin.clusters, #allows for an override on the standard errors
     testequivelance::Bool = false)::M where {M<:AbstractMatrix, V<:AbstractVector}
+
 
   length(clusters) ∈ [1,2] || error("Illegal number of clusters = $(length(clusters))")
   clusteredΣ!(lin.X, lin.xqr, lin.ε, clusters[1], Σ₁, lin.dof)
@@ -167,6 +168,7 @@ function clusteredΣ!(lin::FMLM{M, V}, Σ₁::M = M(undef, lin.K, lin.K);
 
   return Σ₁
 end
+
 
 
 ###################getMWErrors!##############################

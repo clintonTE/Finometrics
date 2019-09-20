@@ -390,6 +390,7 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
 
     linalt2 = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:G,
       clustersyms=[:C1,:C2], qrtype=qrtype, checkwithin=testprimarywithin, containsmissings=false)
+    Finometrics.clusteredΣ!(linalt2, Σclustered, clusters = [linalt2.clusters[1]], testequivelance=true)    
     Finometrics.clusteredΣ!(linalt2, Σclustered, testequivelance=true)
 
 
