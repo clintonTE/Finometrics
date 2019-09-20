@@ -130,19 +130,21 @@ function clusteredΣ!(X::M, xqr::FMQR{M}, ε::V, clusters::C,
 end
 
 function clusteredΣ!(lin::FMLM{M, V}, Σ₁::M = M(undef, lin.K, lin.K);
+    clusters::FMClusters = lin.clusters, #allows for an override on the standard errors
     testequivelance::Bool = false)::M where {M<:AbstractMatrix, V<:AbstractVector}
 
-  clusteredΣ!(lin.X, lin.xqr, lin.ε, lin.clusters[1], Σ₁, lin.dof)
-  if length(lin.clusters) == 2
+  length(clusters) ∈ [1,2] || error("Illegal number of clusters = $(length(clusters))")
+  clusteredΣ!(lin.X, lin.xqr, lin.ε, clusters[1], Σ₁, lin.dof)
+  if length(clusters) == 2
     Σ₂::M = similar(Σ₁)
     Σ₃::M = similar(Σ₁)
 
     #create the intersection of the clusters
     cluster⋂::Vector{Symbol} = ((s1::Symbol, s2::Symbol)->
-      Symbol(s1,"_∩_",s2)).(lin.clusters[1],lin.clusters[2])
+      Symbol(s1,"_∩_",s2)).(clusters[1],clusters[2])
 
     #get the remaining clusters
-    clusteredΣ!(lin.X, lin.xqr, lin.ε, lin.clusters[2], Σ₂, lin.dof)
+    clusteredΣ!(lin.X, lin.xqr, lin.ε, clusters[2], Σ₂, lin.dof)
     clusteredΣ!(lin.X, lin.xqr, lin.ε, cluster⋂, Σ₃, lin.dof)
 
     Σ₁ .= Σ₁ .+ Σ₂ .- Σ₃
