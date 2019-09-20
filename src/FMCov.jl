@@ -97,14 +97,16 @@ function clusteredΣ!(X::M, xqr::FMQR{M}, ε::V, clusters::C,
   #convenience vectors and values
   cvars::C = unique(clusters)
   Nclusters::Int = length(cvars)
-  ctable::Dict = Dict(cvars[i] => i for i::Int ∈ 1:Nclusters)
-  clustercode::Vector{Int} = ((x)->ctable[x]).(clusters)
+  #ctable::Dict = Dict(cvars[i] => i for i::Int ∈ 1:Nclusters)
+  #clustercode::Vector{Int} = ((x)->ctable[x]).(clusters)
 
   #iterate through the groups
   B::M = zeros(xqr.K, xqr.K)
-  @fastmath for i::Int ∈ 1:Nclusters
-    Xg::SubArray = view(X, clustercode .== i, :)
-    ug::SubArray = view(ε, clustercode .== i)
+  idx::Vector{Bool} = Vector{Bool}(undef, xqr.N)
+  @fastmath for cvar ∈ cvars
+    idx .= clusters .== cvar
+    Xg::SubArray = view(X, idx, :)
+    ug::SubArray = view(ε, idx)
     B .+= Xg'*ug*ug'*Xg
   end
 

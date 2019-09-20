@@ -440,7 +440,7 @@ end
 #@time LMtest(CuMatrix{Float32}, CuVector{Float32}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
 #CuArrays.allowscalar(false)
 @time LMtest(Matrix{Float64}, Vector{Float64},
-  N=100_000, testerrors=true, K=10, testprimarywithin=false, runslow=false)#, qrtype=CuMatrix{Float32})
+  N=1_000, testerrors=true, K=10, testprimarywithin=false, runslow=false)#, qrtype=CuMatrix{Float32})
 
 #CuArrays.allowscalar(false)
 #@time rapidreg(Matrix{Float64}, Vector{Float64}, iter=10, N=1_000_000, K=10,
