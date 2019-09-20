@@ -141,8 +141,8 @@ function clusteredΣ!(lin::FMLM{M, V}, Σ₁::M = M(undef, lin.K, lin.K);
     Σ₃::M = similar(Σ₁)
 
     #create the intersection of the clusters
-    cluster⋂::Vector{Symbol} = ((s1::Symbol, s2::Symbol)->
-      Symbol(s1,"_∩_",s2)).(clusters[1],clusters[2])
+    cluster⋂::Vector{Symbol} = ((s1, s2)->
+      Symbol(string(s1),"_∩_",string(s2))).(clusters[1],clusters[2])
 
     #get the remaining clusters
     clusteredΣ!(lin.X, lin.xqr, lin.ε, clusters[2], Σ₂, lin.dof)
