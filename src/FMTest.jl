@@ -335,7 +335,8 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
   end
   df.Y = Y
   df.G = (i->Symbol(:G,i)).(rand(1:5,N))
-  df.C = (i->Symbol(:C,i)).(rand(1:5,N))
+  df.C1 = (i->Symbol(:C,i)).((j->j÷10).(1:N))
+  df.C2 = (i->Symbol(:C,i)).((j->j%10).(1:N))
 
   #get the linear model
   xspec = Meta.parse(join((string).(xnames),"+"))
@@ -343,20 +344,20 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
   print("Time running primary regression...")
   @time for i ∈ 1:iter
     lin = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:G,
-      clustersym=:C, qrtype=qrtype, checkwithin=testprimarywithin, containsmissings=false)
+      clustersyms=:C1, qrtype=qrtype, checkwithin=testprimarywithin, containsmissings=false)
   end
 
   if testerrors
     #get the homoskedastic SEs
     ΣHomosked::Matrix{Float64} = Finometrics.homoskedasticΣ!(lin)
     ΣHomoskedSlow::Matrix{Float64} = Finometrics.homoskedasticΣ!(lin)
-    linchkwithin::Finometrics.FMLM = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:G,
-      clustersym=:C, checkwithin=true, qrtype=qrtype)
-    ΣHomoskedalt::Matrix{Float64} = Finometrics.homoskedasticΣ!(linchkwithin)
+    linalt::Finometrics.FMLM = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:G,
+      clustersyms=[:C1, :C2], checkwithin=true, qrtype=qrtype)
+    ΣHomoskedalt::Matrix{Float64} = Finometrics.homoskedasticΣ!(linalt)
 
     #print the coefficients
     println("\nCoefficients: ",lin.β)
-    println("Coefficients (alt w/in): ",linchkwithin.β)
+    println("Coefficients (alt w/in): ",linalt.β)
 
     println("\nHomoskedastic Errors: ", diag(ΣHomosked).^.5)
     println("Check: ", diag(ΣHomoskedSlow).^.5)
@@ -383,9 +384,14 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     #get the modified white SEs
     Σclustered::Matrix{Float64} = similar(ΣHomosked)
     Finometrics.clusteredΣ!(lin, Σclustered)
-    ΣclusteredChk =Finometrics.clusteredΣ!(linchkwithin, Σclustered) #might need a better check here
+    ΣclusteredChk =Finometrics.clusteredΣ!(linalt, Σclustered) #might need a better check here
     println("\nClustered Errors: ",diag(Σclustered).^.5)
     println("Check: ", diag(ΣclusteredChk ).^.5)
+
+    linalt2 = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:G,
+      clustersyms=[:C1,:C2], qrtype=qrtype, checkwithin=testprimarywithin, containsmissings=false)
+    Finometrics.clusteredΣ!(linalt2, Σclustered, testequivelance=true)
+
 
     #get the nw SEs
     ΣNW::Matrix{Float64} = similar(ΣHomosked)

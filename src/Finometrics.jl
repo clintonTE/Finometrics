@@ -229,6 +229,7 @@ const LOWER_PAD = "\n"
 
 # include("$(pwd())/FMReg.jl")
 include("FMReg.jl")
+include("FMCov.jl")
 include("FMIO.jl")
 include("FMStat.jl")
 include("FMVAR.jl")
