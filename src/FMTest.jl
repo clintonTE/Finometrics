@@ -343,7 +343,7 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
 
   print("Time running primary regression...")
   @time for i ∈ 1:iter
-    lin = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:G,
+    lin = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:C1,
       clustersyms=:C1, qrtype=qrtype, checkwithin=testprimarywithin, containsmissings=false)
   end
 
@@ -441,7 +441,7 @@ end
 #@time LMtest(CuMatrix{Float32}, CuVector{Float32}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
 #CuArrays.allowscalar(false)
 @time LMtest(Matrix{Float64}, Vector{Float64},
-  N=2_000_000, testerrors=true, K=10, testprimarywithin=false, runslow=false)#, qrtype=CuMatrix{Float32})
+  N=1_000_000, testerrors=true, K=10, testprimarywithin=false, runslow=false)#, qrtype=CuMatrix{Float32})
 
 #CuArrays.allowscalar(false)
 #@time rapidreg(Matrix{Float64}, Vector{Float64}, iter=10, N=1_000_000, K=10,
