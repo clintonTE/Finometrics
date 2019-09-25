@@ -407,8 +407,9 @@ getR(args...; keyargs...) = error("use R instead")
 R(lin::FMLM)::Float64 = cor(lin.Y, lin.Y .- lin.ε)
 
 getR²(args...; keyargs...) = error("use R² instead")
-function R²(lin::FMLM; adjusted::Bool = true)::Float64
-  R²::Float64 = R(lin)^.2
+
+function R²(lin::FMLM; adjusted::Bool = false)::Float64
+  R²::Float64 = R(lin)^2
   R² = adjusted ? R² - (1-R²)*(lin.N-lin.dof+1)/lin.dof : R²
 
   return R²

@@ -414,6 +414,10 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     println("\nNW panel Errors: ",diag(ΣNWpanel).^.5)
     runslow && println("Check: ", diag(ΣNWpanelslow).^.5)
 
+    SST::Float64 = sum((lin.Y .- mean(lin.Y)).^2)
+    SSE::Float64 = sum(lin.ε.^2)
+
+    println("\nR²: $(Finometrics.R²(lin)) R²-derived: $(1 - SSE/SST)")
 
     #test the project routines
     Pa::V = V(undef, N)
@@ -441,7 +445,7 @@ end
 #@time LMtest(CuMatrix{Float32}, CuVector{Float32}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
 #CuArrays.allowscalar(false)
 @time LMtest(Matrix{Float64}, Vector{Float64},
-  N=1_000_000, testerrors=true, K=10, testprimarywithin=false, runslow=false)#, qrtype=CuMatrix{Float32})
+  N=100_000, testerrors=true, K=10, testprimarywithin=false, runslow=false)#, qrtype=CuMatrix{Float32})
 
 #CuArrays.allowscalar(false)
 #@time rapidreg(Matrix{Float64}, Vector{Float64}, iter=10, N=1_000_000, K=10,
