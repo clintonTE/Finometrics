@@ -102,11 +102,13 @@ function textable(;
     write(b, colheadername[r])
     if length(colnames[r]) ≠ numcontentcols
       for c::Int ∈ 1:length(colnames[r]) #for each column heading
-          write(b,"\t&\t\\multicolumn{$(widthcolnames[r][c])}{$(alignmentcolnames[r][c])}{$(colnames[r][c])}")
+        (c≠1 || (!rowlabelheader)) && write(b,"\t&")
+        write(b,"\t\\multicolumn{$(widthcolnames[r][c])}{$(alignmentcolnames[r][c])}{$(colnames[r][c])}")
       end
     else
       for c::Int ∈ 1:length(colnames[r]) #for each column heading
-        write(b,"\t&\t$(colnames[r][c])")
+        (c≠1 || (!rowlabelheader)) && write(b,"\t&")
+        write(b,"\t$(colnames[r][c])")
       end
     end
       write(b,"\n\\\\")
