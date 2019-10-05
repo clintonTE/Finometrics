@@ -343,7 +343,7 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
 
   print("Time running primary regression...")
   @time for i ∈ 1:iter
-    lin = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:C1,
+    lin = Finometrics.FMLM(df, xspec, :Y, M, V, #withinsym=:C1,
       clustersyms=:C1, qrtype=qrtype, checkwithin=testprimarywithin, containsmissings=false)
   end
 
@@ -357,7 +357,11 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
 
     #print the coefficients
     println("\nCoefficients: ",lin.β)
+    println("Model coeff: ", ((lin.X' * lin.X)\I) * lin.X' * lin.Y)
     println("Coefficients (alt w/in): ",linalt.β)
+    A::Matrix{Float64} = [ones(N) df.X1 df.X2 df.X3 df.X4 df.X5]
+    println("Manual coef:", ((A' * A)\I) * A' * Y)
+
 
     println("\nHomoskedastic Errors: ", diag(ΣHomosked).^.5)
     runslow && println("Check: ", diag(ΣHomoskedSlow).^.5)
@@ -445,7 +449,7 @@ end
 #@time LMtest(CuMatrix{Float32}, CuVector{Float32}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
 #CuArrays.allowscalar(false)
 @time LMtest(Matrix{Float64}, Vector{Float64},
-  N=100_000, testerrors=true, K=10, testprimarywithin=false, runslow=false)#, qrtype=CuMatrix{Float32})
+  N=100_000, testerrors=true, K=5, testprimarywithin=false, runslow=false)#, qrtype=CuMatrix{Float32})
 
 #CuArrays.allowscalar(false)
 #@time rapidreg(Matrix{Float64}, Vector{Float64}, iter=10, N=1_000_000, K=10,

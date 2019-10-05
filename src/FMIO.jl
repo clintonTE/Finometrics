@@ -80,14 +80,15 @@ function textable(;
   widthdesccontent::Vector{Vector{Int}} = #contains the number of columns for each entry
     broadcast((i::Int)->ones(Int,length(desccontent[i])),1:length(desccontent)),
   colheadername::Vector{String} = ["" for i ∈ 1:length(colnames)],
-  alignmentstring::String = string(" l", join(["r" for i ∈ 1:length(desccontent[1])])))
+  alignmentstring::String = string(" l", join(["r" for i ∈ 1:length(desccontent[1])])),
+  rowlabelheader::Bool = false)
 
   #size parameters for content
-  numContentRows::Int = length(contentrownames)
+  numcontentrows::Int = length(contentrownames)
 
-  numContentCols::Int = sum(widthcolnames[1])
+  numcontentcols::Int = sum(widthcolnames[1]) - rowlabelheader
 
-  numContentSubRows::Int = length(content)
+  numcontentsubrows::Int = length(content)
 
       #intiate the stream
   b::IOBuffer = IOBuffer()
@@ -99,7 +100,7 @@ function textable(;
   for r::Int ∈ 1:length(colnames) #for each row of column headings
       #write(b,"\n\\\\[-1.8ex]") #use this if the below doesn't work
     write(b, colheadername[r])
-    if length(colnames[r]) ≠ numContentCols
+    if length(colnames[r]) ≠ numcontentcols
       for c::Int ∈ 1:length(colnames[r]) #for each column heading
           write(b,"\t&\t\\multicolumn{$(widthcolnames[r][c])}{$(alignmentcolnames[r][c])}{$(colnames[r][c])}")
       end
@@ -113,12 +114,12 @@ function textable(;
   write(b, " \\midrule\n ")
 
   #now write out the table content
-    if numContentRows > 0
+    if numcontentrows > 0
         write(b," \t \t ")
-        for r::Int ∈ 1:numContentRows
+        for r::Int ∈ 1:numcontentrows
           write(b, "$(contentrownames[r])") #the row label
-          for s::Int ∈ 1:numContentSubRows #print the sub-rows for each row
-            for c::Int ∈ 1:numContentCols #print the columns for each sub-row
+          for s::Int ∈ 1:numcontentsubrows #print the sub-rows for each row
+            for c::Int ∈ 1:numcontentcols #print the columns for each sub-row
               write(b,"\t&\t$((content[s])[r, c])")
             end
             write(b,"\n $(linespacer) \t\t") #line-break stylistic formatting
@@ -131,7 +132,7 @@ function textable(;
     if length(desccontent)>0
         for r::Int ∈ 1:length(desccontent) #for each description row
           write(b, "$(descrownames[r])") #the row label
-          if length(widthdesccontent[r]) ≠ numContentCols
+          if length(widthdesccontent[r]) ≠ numcontentcols
             for c::Int ∈ 1:length(desccontent[r]) #for each descriptive row
               if length(desccontent[r][c]) ≥ 1
                 write(b,"\t&\t\\multicolumn{$(widthdesccontent[r][c])}{r}{$(sumMathFlag)$(desccontent[r][c])$(sumMathFlag)}")
@@ -157,7 +158,7 @@ function textable(;
   if length(notes) > 0
       write(b,"""\n \\\\[-1.0ex] \\textit{Notes:} \t """)
       for r ∈ length(notes)
-          write(b, "\t&\t \\multicolumn{$numContentCols}{l}{$(notes[r])}\n \\\\")
+          write(b, "\t&\t \\multicolumn{$numcontentcols}{l}{$(notes[r])}\n \\\\")
       end
   end
   write(b, "\t \\end{tabular}\n")
@@ -200,10 +201,11 @@ function textable(models::Vector{FMLM},
     scaling::Vector{Float64}=ones(length(rows)),
     decimaldigits::Int = 2,
     colheadername::Vector{String} = ["" for i::Int ∈ 1:length(colnames)],
-    alignmentstring::String = string(" l | ", join(["r" for i ∈ 1:length(desccontent[1])])))
+    alignmentstring::String = string(" l | ", join(["r" for i ∈ 1:length(desccontent[1])])),
+    rowlabelheader::Bool = false)
 
   Ncols = length(models)
-  numContentRows = length(rows)
+  numcontentrows = length(rows)
 
   #Pre-allocate the vector of SE errors
   σs::Vector{Vector{Float64}} =
@@ -238,7 +240,7 @@ function textable(models::Vector{FMLM},
     summarymathmode=summarymathmode, widthcolnames=widthcolnames,
     widthdesccontent=widthdesccontent, colheadername=colheadername,
     alignmentcolnames=alignmentcolnames,
-    alignmentstring=alignmentstring)
+    alignmentstring=alignmentstring, rowlabelheader=rowlabelheader)
 end
 
 
