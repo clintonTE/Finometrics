@@ -21,7 +21,7 @@ function num2str(x::T, decimals::Int=DEFAULT_DECIMALS;
     outstr = ""
   elseif scalehurdle ≠ nothing && x≥scalehurdle
     outstr = "$(Int(round(x*scalefactoronhurdle)))"
-  elseif decimals == 0 || (Ints && round(x) == x)
+  elseif decimals == 0 || (ints && round(x) == x)
     outstr = "$(Int(round(x)))"
   else
     outstr = format("{:.$(decimals)f}",x)
