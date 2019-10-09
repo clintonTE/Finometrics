@@ -16,9 +16,8 @@ end=#
 
 ##################Dependencies
 
-using  DataFrames, Distributions, StatsBase, GLM, CategoricalArrays,
-  Dates, NLopt, ForwardDiff, Formatting, DataStructures,
-  LinearAlgebra, StatsModels
+using  DataFrames, Distributions, StatsBase, GLM,
+  Dates, NLopt, LinearAlgebra, StatsModels
 
 try
   using CuArrays
