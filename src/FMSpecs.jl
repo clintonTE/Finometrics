@@ -12,7 +12,7 @@ struct FMSpecs{T<:Any}
   xspecs::Vector{FMExpr}
   xnames::Vector{Vector{Symbol}}
   withinspecs::Vector{FMExpr}
-  clusterspecs::Vector{FMExpr}
+  clusterspecs::Vector{Union{NSymbol, Vector{Symbol}}}
   results::Vector{T}
 end
 
@@ -28,7 +28,7 @@ function FMSpecs(sizehint::NInt = nothing,
   local xspecs::Vector{FMExpr} = Vector{FMExpr}()
   local xnames::Vector{Vector{Symbol}} = Vector{Vector{Symbol}}()
   local withinspecs::Vector{FMExpr} = Vector{FMExpr}()
-  local clusterspecs::Vector{FMExpr} = Vector{FMExpr}()
+  local clusterspecs::Vector{Union{NSymbol, Vector{Symbol}}} = Vector{Union{NSymbol, Vector{Symbol}}}()
   local results::Vector{T} = Vector{T}()
 
   #makes minimal difference, but this could be handy
