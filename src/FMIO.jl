@@ -216,7 +216,7 @@ function textable(models::Vector{FMLM},
   #pull out the β coefficients and N
   βs::Vector{Vector{Float64}} = [models[i].β for i::Int ∈ 1:Ncols]
   Ns::Vector{Int} = [models[i].N for i ∈ 1:Ncols]
-  modelsXnames::Vector{Vector{Symbol}} = [models[i].Xnames for i::Int ∈ 1:Ncols]
+  Xnames::Vector{Vector{Symbol}} = [models[i].Xnames for i::Int ∈ 1:Ncols]
 
   #get the standard errors
   for c ∈ 1:Ncols
@@ -232,9 +232,10 @@ function textable(models::Vector{FMLM},
   end
 
   #get the content matrices
-  content::Vector{Matrix{String}} = getcontentmatrices!( βs, σs, modelsXnames, Ns, rows,
-      stars=stars, starlvls=starlvls, scaling=scaling,
-      decimaldigits=decimaldigits, starstrings=starstrings)
+  content::Vector{Matrix{String}} = getcontentmatrices!( βs=βs, σs=σs,
+    Xnames=Xnames, Ns=Ns, rows=rows,
+    stars=stars, starlvls=starlvls, scaling=scaling,
+    decimaldigits=decimaldigits, starstrings=starstrings)
 
   return textable(colnames=colnames,
     contentrownames=contentrownames, content=content, descrownames=descrownames,
