@@ -216,7 +216,7 @@ function textable(models::Vector{FMLM},
   #pull out the β coefficients and N
   βs::Vector{Vector{Float64}} = [models[i].β for i::Int ∈ 1:Ncols]
   Ns::Vector{Int} = [models[i].N for i ∈ 1:Ncols]
-  modelsxnames::Vector{Vector{Symbol}} = [models[i].xnames for i::Int ∈ 1:Ncols]
+  modelsxnames::Vector{Vector{Symbol}} = [models[i].Xnames for i::Int ∈ 1:Ncols]
 
   #get the standard errors
   for c ∈ 1:Ncols
@@ -232,7 +232,7 @@ function textable(models::Vector{FMLM},
   end
 
   #get the content matrices
-  content::Vector{Matrix{String}} = getcontentmatrices!( βs, σs, xnames, Ns, rows,
+  content::Vector{Matrix{String}} = getcontentmatrices!( βs, σs, Xnames, Ns, rows,
       stars=stars, starlvls=starlvls, scaling=scaling,
       decimaldigits=decimaldigits, starstrings=starstrings)
 
@@ -256,7 +256,7 @@ stars, a scaling factor, and the number of digits (rounding level)=#
 function getcontentmatrices!(;
     βs::Vector{Vector{Float64}} = error("βs is a required argument for getcontentmatrices"),
     σs::Vector{Vector{Float64}} = error("σs is a required argument for getcontentmatrices"),
-    xnames::Vector{Vector{Symbol}} = error("xnames is a required argument for getcontentmatrices"),
+    Xnames::Vector{Vector{Symbol}} = error("Xnames is a required argument for getcontentmatrices"),
     Ns::Vector{Int} = error("Ns is a required argument for getcontentmatrices"),
     rows::Vector{Symbol} = error("rows is a required argument for getcontentmatrices"),
     stars::Bool=true, #whether to display signficance stars
@@ -273,7 +273,7 @@ function getcontentmatrices!(;
     for c ∈ 1:length(βs)
 
         #build a dictionary of the names
-        XNameTbl::Dict = Dict(xnames[c][i] => i for i::Int ∈ 1:length(βs[c]))
+        XNameTbl::Dict = Dict(Xnames[c][i] => i for i::Int ∈ 1:length(βs[c]))
 
         for r ∈ 1:length(rows)
             if haskey(XNameTbl, rows[r]) #need to check if it exists
