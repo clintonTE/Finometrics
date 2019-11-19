@@ -100,7 +100,7 @@ function Base.push!(specs; specname::String = "($(specs.N[]+1))",
   xspec::FMExpr = len > 1 ? specs.xspecs[end] : :X,
   xnames::Vector{Symbol} = len > 1 ? specs.xspecs[end] : [:intercept, :X],
   withinspec::FMExpr = nothing,
-  clusterspec::FMExpr = nothing)
+  clusterspec::Union{NSymbol, Vector{Symbol}} = nothing)
 
   #generate the specs
   push!(specs.specnames, specname)
