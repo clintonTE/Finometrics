@@ -53,7 +53,7 @@ Base.show(io::IO, fs::FMSpecs) = print(io, "N: $(fs.N)
 function computeFMLMresults!(dfs::S,
     specs::FMSpecs{T}, ::Type{M} = Matrix{Float64}, ::Type{V} = Vector{Float64}
     ; parallel::Bool=false, containsmissings::Bool=true, qrtype::Type = M
-    )::Nothing where {S<:Union{Vector{SubDataFrame}, Vector{DataFrame}, GroupedDataFrame},
+    )::Nothing where {S<:Union{Vector{<:AbstractDataFrame}, GroupedDataFrame},
     T<:Any, M<:AbstractMatrix, V<:AbstractVector}
 
   #make sure the dimensions are corred
