@@ -47,7 +47,7 @@ end
 
 
 ###################getWhiteERRORs ###OLS only
-
+#checked against vcovHC in R (which uses the HC3 algorithm)
 getWhiteΣ!(args...; keyargs...) = error("use whiteΣ! instead")
 function whiteΣ!(xqr::FMQR{M}, ε::V,
   Σ::M = M(undef, xqr.K, xqr.K),
@@ -89,6 +89,7 @@ whiteΣslow(lin::FMLM) = whiteΣslow(lin.X, lin.Y.-lin.X * lin.β, lin.N/lin.dof
 #from http://cameron.econ.ucdavis.edu/research/Cameron_Miller_JHR_2015_February.pdf
 #also provides methedology for multi-way clsutering
 #forumala: [X'X]^-1*B*[X'X]^-1 where B= sum over G (Xg'*εg*εg'*Xg) and g is indexed for G clusters
+#checked against felm's [modelvar].cse with exactDOF=TRUE in R
 getClustered!(args...; keyargs...) = error("use clusteredΣ! instead")
 
 function clusteredΣ!(X::M, xqr::FMQR{M}, ε::V, clusters::C,
@@ -126,6 +127,8 @@ function clusteredΣ!(X::M, xqr::FMQR{M}, ε::V, clusters::C,
   return Σ
 end
 
+#handles 2-way clustering
+#checked against felm's [modelvar].cse with exactDOF=TRUE in R
 function clusteredΣ!(lin::FMLM{M, V}, Σ₁::M = M(undef, lin.K, lin.K);
     clusters::Vector{<:Vector}#=Union{FMClusters, Vector{<:FMData}}=# = lin.clusters, #allows for an override on the standard errors
     testequivelance::Bool = false)::M where {M<:AbstractMatrix, V<:AbstractVector}
