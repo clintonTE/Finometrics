@@ -1,4 +1,4 @@
-using Revise, Dates, DataFrames, GLM
+#=using Revise, Dates, DataFrames, GLM
 #NSymbol = Union{Nothing, Symbol}
 #NInt = Union{Nothing, Int} #NOTE: consider deleting this later
 import Base: +, -, ==, >, <, ≥, ≤, length, isless, isequal
@@ -17,7 +17,9 @@ macro mpar(cond, expr)
         :($($expr))
     end
   end
-end
+end=#
+
+using Finometrics
 
 #  StatsModels.implicit_intercept(::Type{<:Any}) = true
 #=function getModelMatrix(df::T, f::FormulaTerm)::Matrix{Float64} where
