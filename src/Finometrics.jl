@@ -102,8 +102,12 @@ export FMLM, #Regression methods
   generalizeARMA!,
   narrowARMA!,
   winsorize!,
-  lagwithin!,
+
+  lagwithin!, #FMLagWithin
   differencewithin!,
+  lagwithin2!,
+  lagwithin2sorted!,
+  lagwithin2sorted,
 
   FMΦInv, #FMNumerical
   FMΦ,
@@ -231,6 +235,7 @@ include("FMReg.jl")
 include("FMCov.jl")
 include("FMIO.jl")
 include("FMStat.jl")
+include("FMLagWithin.jl")
 include("FMVAR.jl")
 include("FMNumerical.jl")
 include("FMSpecs.jl")
