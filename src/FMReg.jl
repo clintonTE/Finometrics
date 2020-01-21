@@ -194,7 +194,7 @@ NOTE: RHS expression must be ordered with factors last, otherwise
     the factor names will be incorrect =#
 function FMLM(df::AbstractDataFrame,  Xexpr::FMExpr, Ysym::Symbol,
     ::Type{M} = Matrix{Float64}, ::Type{V} = Vector{Float64};
-    Xnames::Vector{Symbol}=[Symbol("Intercept")], Yname::Symbol=:Y,
+    Xnames::Vector{Symbol}=Vector{Symbol}(), Yname::Symbol=:Y,
     containsmissings::Bool=true, withinsym::NSymbol = nothing,
     clustersyms::C= nothing,
     qrtype::Type = M, checkwithin::Bool = false)::FMLM  where {

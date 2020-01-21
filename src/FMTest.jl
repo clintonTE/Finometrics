@@ -1,6 +1,9 @@
-#=using Revise, Dates, DataFrames, GLM
-#NSymbol = Union{Nothing, Symbol}
-#NInt = Union{Nothing, Int} #NOTE: consider deleting this later
+#NOTE: Uncomment below bloc for stand alone testing
+
+#=using Revise
+include("Finometrics.jl")
+using Distributions, LinearAlgebra, CuArrays, DataFrames,
+ Dates, DataFrames, GLM
 import Base: +, -, ==, >, <, ≥, ≤, length, isless, isequal
 import StatsModels: implicit_intercept
 
@@ -19,96 +22,46 @@ macro mpar(cond, expr)
   end
 end=#
 
-using Finometrics
 
-#  StatsModels.implicit_intercept(::Type{<:Any}) = true
-#=function getModelMatrix(df::T, f::FormulaTerm)::Matrix{Float64} where
-  T <: AbstractDataFrame
 
-  mf::ModelFrame = ModelFrame(f, df)
-  #println("frame created")
-  return ModelMatrix(mf).m
-end
-
-#Same as above but allows for an expression
-function getModelMatrix(df::T, rhs::V)::Matrix{Float64} where
-  {T <: AbstractDataFrame, V <: FMExpr}
-
-  #special case which crashes Formula
-  if exp == Symbol("")
-    return ones(Float64,size(df,1),1)
-  end
-
-  #WARNING: This is a HACK! Replace with `nothing` or something else (See StatsModels github)
-  #or just redo the whole thing in the GLM framework
-  lhs_hack::Symbol = names(df)[1]
-  f::FormulaTerm = @eval(@formula($lhs_hack~ $rhs))
-
-  return getModelMatrix(df, f)
-end
-
-function getModelMatrix(df::T, f::FormulaTerm)::Matrix{Float64} where
-  T <: AbstractDataFrame
-  f = apply_schema(f, schema(f,df), StatisticalModel)
-  m = modelcols(f.rhs, df)
-  return m
-end
-
-#Same as above but allows for an expression
-function getModelMatrix(df::T, rhs::V)::Matrix{Float64} where
-  {T <: AbstractDataFrame, V <: FMExpr}
-
-  #special case which crashes Formula
-  if rhs == Symbol("")
-    return ones(Float64,size(df,1),1)
-  end
-
-  #WARNING: This is a HACK! Replace with `nothing` or something else (See StatsModels github)
-  #or just redo the whole thing in the GLM framework
-  #Will be able to replace the LHS w/0 in subsequent versions
-  lhs_hack::Symbol = names(df)[1]
-  f::FormulaTerm = @eval(@formula($lhs_hack ~ $rhs))
-
-  return getModelMatrix(df, f)
-end
 
 
 function testMM(df::DataFrame, loops=1)
   #println(df)
-  x = getModelMatrix(df, :(x+y+f))
+  m = Finometrics.generateX(Matrix{Float64}, df, :(x+y+f))
 
-  (loops==1) && display(x)
+  (loops==1) && display(m)
 
-  return sum(x)
+  return m
 end
 
 function testMM(loops::Int; N::Int=1000, G::Int=50)
   local tot::Float64 = 0.0
+  @info "testing MM. Failure will result in an error."
 
   df = DataFrame(x = 1001:(1000+N), y = rand(N), z=rand(N),
     f = (i->Symbol(:q,i÷(N ÷ G))).(1:N))
 
   @time for i ∈ 1:loops
-    tot+=testMM(df, loops)/N/G
-    df.y .+= rand()
+    m=testMM(df, loops)
+    (sum(df.x .≠ m[:,2]) == 0) || error("Invalid x column! df.x:$(df.x)\n###\nm[:,2]:$(m[:,2])")
+    (sum(df.y .≠ m[:,3]) == 0) || error("Invalid y column!")
+    (sum(1 .≠ m[:,1]) == 0) || error("Invalid intercept column!")
+    (size(m,1) == N) || error("Invalid row dimension!")
+    (size(m,2) == length(unique(df.f))+2) || error(
+      "Invalid column dimension! Effects=$(length(unique(df.f))) size=$(size(m))")
   end
 
   println(tot)
 end
-
-testMM(10_000, N=1000, G=10)=#
-
-
-
-
-#=using Finometrics
-using Revise
 
 
 #use this to test the lag functions
 function testlaganddifference(N = 10_000)
   rowindex = collect(1:N)
   periodcol = deepcopy(rowindex)
+
+  @info "testing lag and difference. Failure will result in an error."
 
 
   #make a test frame
@@ -117,18 +70,18 @@ function testlaganddifference(N = 10_000)
 
   #sort!(df, [:group1, :period, :group2])
   #CASE 1: create lagged field Lgroup1
-  lagwithin!(df, :target1, :group1, :period)
+  Finometrics.lagwithin!(df, :target1, :group1, :period)
 
   #CASE 2: create lagged fields L2target1 and L2target2
-  lagwithin!(df, [:target1, :target2], [:group1, :group2], :period, lags=2, sorted=false)
+  Finometrics.lagwithin!(df, [:target1, :target2], [:group1, :group2], :period, lags=2, sorted=false)
 
   #CASE 3: difference :Ltarget1 and create DLtarget1 and LLtarget1
-  differencewithin!(df, :Ltarget1, :group1, :period, deletelag=false, sorted=true,
+  Finometrics.differencewithin!(df, :Ltarget1, :group1, :period, deletelag=false, sorted=true,
     laggedname=:LLtarget1e, differencedname=:DLtarget1e)
 
   #CASE 4: difference [:L2target1, :L2target2] creating
   # [:DL2target1e, :DL2target2e], [:LL2target1e, :LL2target2e]
-  differencewithin!(df, [:L2target1, :L2target2], [:group1, :group2], :period,
+  Finometrics.differencewithin!(df, [:L2target1, :L2target2], [:group1, :group2], :period,
     deletelag=false, sorted=true, differencednames=[:DL2target1e, :DL2target2e],
     laggednames = [:LL2target1e, :LL2target2e])
 
@@ -185,12 +138,12 @@ function testlaganddifference(N = 10_000)
   display(df)
 end
 
-#testlaganddifference()
 
 function testYearQuarter()
 
+  @info "testing year quarter. Failure will result in an error."
   #test the first constructor
-  yq1::YearQuarter = YearQuarter(1998,2)
+  yq1::Finometrics.YearQuarter = Finometrics.YearQuarter(1998,2)
   try
     YearQuarter(1985,7)
     @assert false
@@ -199,9 +152,9 @@ function testYearQuarter()
   end
 
   #test the second constructor
-  yq2::YearQuarter = YearQuarter(2000.4)
+  yq2::Finometrics.YearQuarter = Finometrics.YearQuarter(2000.4)
   try
-    YearQuarter(2000.05)
+    Finometrics.YearQuarter(2000.05)
     @assert false
   catch err
     (typeof(err)<:AssertionError) && error("Error catching invalid values in 2nd constructor")
@@ -222,23 +175,23 @@ function testYearQuarter()
 
   #println(yq1)
   #println(Float64(yq1))
-end=#
+end
 
 function testYearMonth()
-
+  @info "testing year month. Failure will result in an error."
   #test the first constructor
-  ym1::YearMonth = YearMonth(1998,2)
+  ym1::Finometrics.YearMonth = Finometrics.YearMonth(1998,2)
   try
-    YearMonth(1985,14)
+    Finometrics.YearMonth(1985,14)
     @assert false
   catch err
     (typeof(err)<:AssertionError) && error("Error catching invalid values in first constructor")
   end
 
   #test the second constructor
-  ym2::YearMonth = YearMonth(2008_04)
+  ym2::Finometrics.YearMonth = Finometrics.YearMonth(2008_04)
   try
-    YearMonth(2000_14)
+    Finometrics.YearMonth(2000_14)
     @assert false
   catch err
     (typeof(err)<:AssertionError) && error("Error catching invalid values in 2nd constructor")
@@ -257,53 +210,14 @@ function testYearMonth()
 
 end
 
-#@time for i ∈ 1:200_000
-#  testYearMonth()
-#end
 
-function testymperformance(N::Int)
-  ms::Vector{Int} = rand(1:12, N)
-  ys::Vector{Int} = rand(0:20, N) .+ 1990
-  addedmonths::Vector{Int} = rand(-120:120, N)
-  local tot::Int
-  local yms::Vector{YearMonth}
-  local dts::Vector{Date}
-
-  local addedMonths::Vector{Month} = (Month).(addedmonths)
-
-  benchym::YearMonth = YearMonth(2000,1)
-  benchdt::Date = Date(2000,1,1)
-
-  @time begin
-    yms = ((y::Int,m::Int)->YearMonth(y,m)).(ys,ms)
-    yms .= yms .+ addedmonths
-    tot = sum(yms .> benchym)
-    print("\nYearMonth: $tot values found in")
-  end
-
-  @time begin
-    dts = ((y::Int,m::Int)->Date(y,m,1)).(ys,ms)
-    dts .= dts .+ addedMonths
-    tot = sum(dts .> benchdt)
-    print("Date: $tot values found in")
-  end
-
-end
-
-
-
-
-#testymperformance(100_000_000)
-
-include("Finometrics.jl")
-using Distributions, LinearAlgebra, CuArrays, DataFrames
 
 function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     N::Int = 200, K::Int = 2, testerrors::Bool = true,
     qrtype::Type = M, iter::Int = 1, testprimarywithin::Bool = false, runslow::Bool = true) where {
     M<:AbstractMatrix, V<:AbstractVector}
 
-
+  @warn "Testing LM. Checks are manual: Must compare outputs. Automate this at some point."
   local lin::Finometrics.FMLM
 
   #Allocate
@@ -353,21 +267,31 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     #get the homoskedastic SEs
     ΣHomosked::Matrix{Float64} = Finometrics.homoskedasticΣ!(lin)
     runslow && (ΣHomoskedSlow::Matrix{Float64} = Finometrics.homoskedasticΣslow(lin))
-    linalt::Finometrics.FMLM = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:G,
-      clustersyms=[:C1, :C2], checkwithin=true, qrtype=qrtype)
-    ΣHomoskedalt::Matrix{Float64} = Finometrics.homoskedasticΣ!(linalt)
+
 
     #print the coefficients
     println("\nCoefficients: ",lin.β)
     println("Model coeff: ", ((lin.X' * lin.X)\I) * lin.X' * lin.Y)
-    println("Coefficients (alt w/in): ",linalt.β)
     A::Matrix{Float64} = [ones(N) df.X1 df.X2 df.X3 df.X4 df.X5]
     println("Manual coef:", ((A' * A)\I) * A' * Y)
 
+    xnamesfixed = [xnames; :G]
+    xspecfixed = Meta.parse(join((string).(xnamesfixed),"+"))
+    linfixed = Finometrics.FMLM(df, xspecfixed, :Y, M, V, #withinsym=:C1,
+      clustersyms=[:C1, :C2], qrtype=qrtype, checkwithin=testprimarywithin, containsmissings=false)
+    linwithin::Finometrics.FMLM = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:G,
+      clustersyms=[:C1, :C2], checkwithin=true, qrtype=qrtype)
+    ΣHomoskedfixed::Matrix{Float64} = Finometrics.homoskedasticΣ!(linfixed)
+    ΣHomoskedwithin::Matrix{Float64} = Finometrics.homoskedasticΣ!(linwithin)
+
+    println("Coefficients (fixed G): ",linfixed.β)
+    println("Coefficients (w/in G): ",linwithin.β)
 
     println("\nHomoskedastic Errors: ", diag(ΣHomosked).^.5)
     runslow && println("Check: ", diag(ΣHomoskedSlow).^.5)
-    println("Homoskedastic Errors (alt w/in): ", diag(ΣHomoskedalt).^.5)
+
+    println("Homoskedastic Errors (w/in): ", diag(ΣHomoskedfixed).^.5)
+    println("Homoskedastic Errors (w/in): ", diag(ΣHomoskedwithin).^.5)
 
     #get the modified white SEs
     ΣMWhite::Matrix{Float64} = similar(ΣHomosked)
@@ -390,16 +314,15 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     #get the modified white SEs
     Σclustered::Matrix{Float64} = similar(ΣHomosked)
     Finometrics.clusteredΣ!(lin, Σclustered)
-    ΣclusteredChk =Finometrics.clusteredΣ!(linalt, Σclustered) #might need a better check here
+    ΣclusteredChk =Finometrics.clusteredΣ!(linwithin, Σclustered) #might need a better check here
     println("\nClustered Errors: ",diag(Σclustered).^.5)
     println("Check: ", diag(ΣclusteredChk ).^.5)
 
     linalt2 = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:G,
       clustersyms=[:C1,:C2], qrtype=qrtype, checkwithin=testprimarywithin, containsmissings=false)
-    #Finometrics.clusteredΣ!(linalt2, Σclustered, clusters = [linalt2.clusters[1]], testequivelance=true)
+    Finometrics.clusteredΣ!(linalt2, Σclustered, clusters = [linalt2.clusters[1]], testequivelance=true)
 
-    print("time 2x cluster:")
-    @time Finometrics.clusteredΣ!(linalt2, Σclustered, testequivelance=false)
+    Finometrics.clusteredΣ!(linalt2, Σclustered, testequivelance=true)
 
 
     #get the nw SEs
@@ -447,12 +370,82 @@ function rapidreg(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
 
   LMtest(M, V, N=N, testerrors=false, testprimarywithin=testprimarywithin, K=K, qrtype=qrtype, iter=iter)
 end
+
+function testlagwithin2(N=100_000)
+  @info "testing lagwithin2. Failure will result in an error."
+  #make the test data
+  df::DataFrame = DataFrame(
+    val1 = Vector{Union{Float64, Missing}}(undef, N),
+    val2 = Vector{Union{Float64, Missing}}(undef, N),
+    group = rand(collect(1:1000),N),
+    date = rand(collect(Date(1985,11,11):Day(1):Date(2011,11,11))))
+
+  for i ∈ 1:N, s ∈ [:val1, :val2]
+    if rand() < 0.95
+      df[i, s] = missing
+    else
+      df[i, s] = rand()
+    end
+  end
+
+  maxnotstale = Day(1000)
+
+  #execute! (will also sort)
+  Finometrics.lagwithin2!(df, [:val1, :val2], :group, date=:date, sorted=false, maxnotstale = maxnotstale)
+
+  df.TLval1 = similar(df.Lval1)
+  df.TLval2 = similar(df.Lval2)
+  #make the test lags
+  for sdf ∈ groupby(df, :group)
+    for j ∈ 2:size(sdf,1)
+      if sdf[j-1,:date] ≥ sdf[j,:date] - maxnotstale
+        sdf[j,:TLval1] = sdf[j-1,:val1]
+        sdf[j,:TLval2] = sdf[j-1,:val2]
+      end
+    end
+  end
+
+  inequalities::Int = 0
+  for r ∈ eachrow(df)
+    if ismissing(r.Lval1)
+      inequalities += (!ismissing(r.TLval1))
+    else
+      inequalities += (!(r.Lval1==r.TLval1))
+    end
+
+    if ismissing(r.Lval2)
+      inequalities += (!ismissing(r.TLval2))
+    else
+      inequalities += (!(r.Lval2==r.TLval2))
+    end
+  end
+
+  @assert inequalities == 0
+
+end
+
+
 #LMtest(CuMatrix{Float32}, CuVector{Float32}, N=1_000)
 #@time LMtest(CuMatrix{Float32}, CuVector{Float32}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
 #CuArrays.allowscalar(false)
-@time LMtest(Matrix{Float64}, Vector{Float64},
-  N=100_000, testerrors=true, K=5, testprimarywithin=false, runslow=false)#, qrtype=CuMatrix{Float32})
+
+
 
 #CuArrays.allowscalar(false)
 #@time rapidreg(Matrix{Float64}, Vector{Float64}, iter=10, N=1_000_000, K=10,
 #  qrtype=Matrix{Float64}, testprimarywithin = true)
+
+function runbasictests()
+  @info "Some basic tests. Incomplete, but better than nothing until I get around to making something better"
+
+  testMM(100, N=1000, G=10)
+  @time LMtest(Matrix{Float64}, Vector{Float64},
+    N=1_000, testerrors=true, K=5, testprimarywithin=true, runslow=true)#, qrtype=CuMatrix{Float32})
+
+  testYearQuarter()
+  testYearMonth()
+  testlaganddifference()
+  testlagwithin2()
+end
+
+#runbasictests()

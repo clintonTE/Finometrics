@@ -240,6 +240,7 @@ include("FMVAR.jl")
 include("FMNumerical.jl")
 include("FMSpecs.jl")
 include("FMYearQuarter.jl")
+include("FMTest.jl")
 include("FMRegBroken2SLS.jl")
 
 #type is derived from a user-defined type
