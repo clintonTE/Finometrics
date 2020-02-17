@@ -21,7 +21,8 @@ end
 #creates the bare constructor
 function FMSpecs(sizehint::NInt = nothing,
     ::Type{T} = FMLM;
-    aggfunc::Function = (f(m::FMLM)::T=m) #default result function is the full regression model
+    aggfunc::Function = (f(m::FMLM)::T=m), #default result function is the full regression model
+    allowmissingresults=false
   )  where T
   local specnames::Vector{String} = Vector{String}()
   local yspecs::Vector{Symbol} = Vector{Symbol}()
@@ -29,7 +30,9 @@ function FMSpecs(sizehint::NInt = nothing,
   local xnames::Vector{Vector{Symbol}} = Vector{Vector{Symbol}}()
   local withinspecs::Vector{FMExpr} = Vector{FMExpr}()
   local clusterspecs::Vector{Union{NSymbol, Vector{Symbol}}} = Vector{Union{NSymbol, Vector{Symbol}}}()
-  local results::Vector{T} = Vector{T}()
+
+  resulttype::Type = allowmissingresults ? Union{T,Missing} : T
+  local results::Vector{resulttype} = Vector{resulttype}()
 
   #makes minimal difference, but this could be handy
   specvector::Vector = [specnames, yspecs, xspecs, xnames, withinspecs, clusterspecs, results]
@@ -72,11 +75,19 @@ function computeFMLMresults!(dfs::S,
   #runs the regressions
   #could conceivably parallelize this at some point
   @mpar parallel for i::Int ∈ 1:specs.N[]
-    m::FMLM = FMLM(dfs[i], specs.xspecs[i],  specs.yspecs[i], M, V,
-      withinsym = specs.withinspecs[i], clustersyms = specs.clusterspecs[i],
-      Xnames=specs.xnames[i], Yname = specs.yspecs[i],
-      containsmissings=containsmissings, qrtype=qrtype)
-    results[i] = specs.aggfunc(m)
+    try
+      m::FMLM = FMLM(dfs[i], specs.xspecs[i],  specs.yspecs[i], M, V,
+        withinsym = specs.withinspecs[i], clustersyms = specs.clusterspecs[i],
+        Xnames=specs.xnames[i], Yname = specs.yspecs[i],
+        containsmissings=containsmissings, qrtype=qrtype)
+      results[i] = specs.aggfunc(m)
+    catch err
+      try
+        results[i] = missing
+      catch err2
+        error("$err2, but more notably $err")
+      end
+    end
   end
 
   (r::T->push!(specs.results, r)).(results)
