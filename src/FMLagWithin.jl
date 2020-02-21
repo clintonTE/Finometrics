@@ -177,11 +177,11 @@ function lagwithin2sorted!(df::DataFrame, vals::Vector{Symbol}, group::Symbol;
 
   #println(typeof(laggeddate))
   #deploy the lags
-  tasks = (s::Symbol -> Threads.@spawn lagwithin2sorted(
+  tasks = @sync((s::Symbol -> Threads.@spawn lagwithin2sorted(
     df[!, s], df[!, group], date = isnothing(date) ? nothing : df[!,date],
-    laggeddate = laggeddate, maxnotstale = maxnotstale, laggedgroup = laggedgroup)).(vals)
+    laggeddate = laggeddate, maxnotstale = maxnotstale, laggedgroup = laggedgroup)).(vals))
 
-  @sync  
+
   for i ∈ 1:length(vals)
     #println(typeof(@fetch tasks[i]))
     df[!, laggedvals[i]] = fetch(tasks[i])
