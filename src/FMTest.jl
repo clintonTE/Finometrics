@@ -391,7 +391,8 @@ function testlagwithin2(N=100_000)
   maxnotstale = Day(1000)
 
   #execute! (will also sort)
-  Finometrics.lagwithin2!(df, [:val1, :val2], :group, date=:date, sorted=false, maxnotstale = maxnotstale)
+  Finometrics.lagwithin2!(df, [:val1, :val2],
+    :group, date=:date, sorted=false, maxnotstale = maxnotstale)
 
   df.TLval1 = similar(df.Lval1)
   df.TLval2 = similar(df.Lval2)

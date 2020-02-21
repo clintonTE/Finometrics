@@ -109,12 +109,13 @@ differencewithin!(df::DataFrame,
 
 ###if these work, consider moving to finometrics
 #lag within a group
-function lagwithin2sorted2(vals::AbstractVector{T},
+function lagwithin2sorted(vals::AbstractVector{T},
   group::AbstractVector{G}, laggedgroup::Vector{<:Union{G, Missing}},
   ::Type{T}, ::Type{G}) where {T<:Any, G<:Any}
 
   lagged::Vector{Union{T, Missing}} = [missing; vals[1:(end-1)]]
-  missingindicies::Vector{Bool} = ((lg,g)->ismissing(lg) || ismissing(g) || lg≠g).(laggedgroup,group)
+  missingindicies::Vector{Bool} = ((lg,g)->
+    ismissing(lg) || ismissing(g) || lg≠g).(laggedgroup,group)
   lagged[missingindicies] .= missing
 
   return lagged
@@ -141,7 +142,7 @@ function lagwithin2sorted(
     Vector{Union{eltype(group), Missing}}([missing; group[1:(end-1)]])) where {G<:Any, D<:Any}
 
 
-  local lagged = lagwithin2sorted2(vals, group, laggedgroup, eltype(vals), eltype(group))
+  local lagged = lagwithin2sorted(vals, group, laggedgroup, eltype(vals), eltype(group))
 
   if !isnothing(maxnotstale)
     if isnothing(laggeddate)
