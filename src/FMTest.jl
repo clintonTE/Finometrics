@@ -22,6 +22,7 @@ macro mpar(cond, expr)
   end
 end=#
 
+#NOTE: End stand-alonge comment block
 
 
 
@@ -391,8 +392,10 @@ function testlagwithin2(N=100_000)
   maxnotstale = Day(1000)
 
   #execute! (will also sort)
+  Finometrics.lagwithin2!(df, [:val1, :val2],  :group, date=:date) #minimalist version, unsorted
+  Finometrics.lagwithin2!(df, [:val1, :val2],  :group, sorted=true) #minimalist version, sorted
   Finometrics.lagwithin2!(df, [:val1, :val2],
-    :group, date=:date, sorted=false, maxnotstale = maxnotstale)
+    :group, date=:date, sorted=true, maxnotstale = maxnotstale)
 
   df.TLval1 = similar(df.Lval1)
   df.TLval2 = similar(df.Lval2)

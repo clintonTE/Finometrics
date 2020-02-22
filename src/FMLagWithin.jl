@@ -160,13 +160,15 @@ function lagwithin2sorted!(df::DataFrame, vals::Vector{Symbol}, group::Symbol;
   maxnotstale::Any = nothing,
   laggedvals::Vector{Symbol} = (s->Symbol(:L, s)).(vals))
 
+
   local laggedgroup::Vector{Union{eltype(df[!,group]), Missing}}
-  local laggeddate::Union{Vector{Union{eltype(df[!,date]), Missing}}, Nothing}
+  local laggeddate::(isnothing(date) ? Nothing : Vector{Union{eltype(df[!,date]), Missing}})
 
 
   #lag the groups, and dates if needed, once
   laggedgroup = Vector{Union{eltype(group), Missing}}([missing; df[!, group][1:(end-1)]])
-  if !isnothing(date)
+  println(!isnothing(date))
+  if (!isnothing(date))
     laggeddate = [missing; df[!,date][1:(end-1)]]
   else
     laggeddate = nothing
