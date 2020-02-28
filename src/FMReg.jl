@@ -167,7 +167,7 @@ struct FMLM{M<:AbstractMatrix, V<:AbstractVector} <: FMModel
 end
 
 
-function FMLM(X::M, Y::V; clusters::FMClusters = [],
+function FMLM(X::M, Y::V; clusters::FMClusters = FMClusters([]),
         Xnames::Vector{Symbol} = Symbol.(:X, 1:size(X,2)),
         Yname::Symbol = :Y, dof = size(X,1)-size(X,2),
         qrtype::Type = M)::FMLM where {
@@ -291,7 +291,7 @@ end
 
 #transforms the data using the within estimator, including an adjustment to dof
 function FMLM(X::M, Y::V, within::AbstractVector{W};
-    clusters::FMClusters = [],
+    clusters::FMClusters = FMClusters([]),
     Xnames::Vector{Symbol} = (Symbol).(:X, 1:size(X,2)),
     Yname::Symbol = :Y,
     qrtype::Type = M)::FMLM where {
@@ -351,7 +351,7 @@ end
 #this alternate method is easier to understand, but as of 1.2 it is 20% slower
 #I expect the speed of this version to increase over time
 function FMLMaltwithin(X::M, Y::V, within::Vector{W};
-    clusters::FMClusters = [],
+    clusters::FMClusters = FMClusters([]),
     Xnames::Vector{Symbol} = (Symbol).(:X, 1:size(X,2)),
     Yname::Symbol = :Y,
     qrtype::Type = M)::FMLM where {

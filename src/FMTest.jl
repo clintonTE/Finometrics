@@ -258,6 +258,9 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
   #get the linear model
   xspec = Meta.parse(join((string).(xnames),"+"))
 
+  println("minimal test")
+  Finometrics.FMLM(df, xspec, :Y, containsmissings=false)
+
   print("Time running primary regression...")
   @time for i ∈ 1:iter
     lin = Finometrics.FMLM(df, xspec, :Y, M, V, #withinsym=:C1,
