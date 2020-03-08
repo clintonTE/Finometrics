@@ -126,7 +126,7 @@ function eliminatestaledates(lagged::AbstractVector{T}, date::AbstractVector{D},
   ::Type{T}, ::Type{D}) where {T<:Any, D<:Any}
 
   missingindicies::Vector{Bool} = ((ld, d)->
-    ismissing(ld) || ismissing(d) || d - ld > maxnotstale).(laggeddate, date)
+    ismissing(ld) || ismissing(d) || d - maxnotstale > ld).(laggeddate, date)
   lagged[missingindicies] .= missing
 
   return lagged
