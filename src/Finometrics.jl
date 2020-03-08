@@ -105,6 +105,7 @@ export FMLM, #Regression methods
 
   lagwithin!, #FMLagWithin
   differencewithin!,
+  differencewithin2!,
   lagwithin2!,
   lagwithin2sorted!,
   lagwithin2sorted,
