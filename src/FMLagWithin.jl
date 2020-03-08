@@ -207,3 +207,26 @@ function lagwithin2!(df::DataFrame, vals::Vector{Symbol}, group::Symbol;
 
   return lagwithin2sorted!(df, vals, group, date=date, maxnotstale=maxnotstale, laggedvals=laggedvals)
 end
+
+function differencewithin2!(df::DataFrame,
+  vals::Vector{Symbol},
+  group::Symbol;
+  date::Union{Symbol,Nothing} = nothing,
+  differencedvals::Vector{Symbol} = (s::Symbol->Symbol(:D, s)).(vals),
+  sorted::Bool=false,
+  createlag::Bool=true,
+  deletelag::Bool=true,
+  maxnotstale::Any = nothing,
+  laggedvals::Vector{Symbol} = (deletelag ?
+    (s::Symbol->Symbol(:L, s, :_temp)).(vals) : (s->Symbol(:L, s)).(vals))
+  )::Nothing
+
+  createlag && lagwithin2!(df, vals, group, date=date,
+    laggedvals=laggedvals, sorted=sorted, maxnotstale=maxnotstale)
+  for t ∈ 1:length(vals)
+    df[!, differencedvals[t]] = df[!, vals[t]] .- df[!, laggedvals[t]]
+    deletelag && select!(df, Not(laggedvals[t]))
+  end
+
+  return nothing
+end

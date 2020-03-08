@@ -399,6 +399,8 @@ function testlagwithin2(N=100_000)
   Finometrics.lagwithin2!(df, [:val1, :val2],  :group, sorted=true) #minimalist version, sorted
   Finometrics.lagwithin2!(df, [:val1, :val2],
     :group, date=:date, sorted=true, maxnotstale = maxnotstale)
+  Finometrics.differencewithin2!(df, [:val1, :val2],
+    :group, date=:date, sorted=true, maxnotstale = maxnotstale)
 
   df.TLval1 = similar(df.Lval1)
   df.TLval2 = similar(df.Lval2)
@@ -418,12 +420,18 @@ function testlagwithin2(N=100_000)
       inequalities += (!ismissing(r.TLval1))
     else
       inequalities += (!(r.Lval1==r.TLval1))
+      if !ismissing(r.val1)
+        inequalities += (!(r.val1-r.TLval1 == r.Dval1))
+      end
     end
 
     if ismissing(r.Lval2)
       inequalities += (!ismissing(r.TLval2))
     else
       inequalities += (!(r.Lval2==r.TLval2))
+      if !ismissing(r.val2)
+        inequalities += (!(r.val2-r.TLval2 == r.Dval2))
+      end
     end
   end
 
@@ -445,13 +453,13 @@ end
 function runbasictests()
   @info "Some basic tests. Incomplete, but better than nothing until I get around to making something better"
 
-  testMM(100, N=1000, G=10)
-  @time LMtest(Matrix{Float64}, Vector{Float64},
-    N=1_000, testerrors=true, K=5, testprimarywithin=true, runslow=true)#, qrtype=CuMatrix{Float32})
+  #testMM(100, N=1000, G=10)
+  #@time LMtest(Matrix{Float64}, Vector{Float64},
+  #  N=1_000, testerrors=true, K=5, testprimarywithin=true, runslow=true)#, qrtype=CuMatrix{Float32})
 
-  testYearQuarter()
-  testYearMonth()
-  testlaganddifference()
+  #testYearQuarter()
+  #testYearMonth()
+  #testlaganddifference()
   testlagwithin2()
 end
 
