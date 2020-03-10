@@ -101,7 +101,8 @@ export FMLM, #Regression methods
   ARMAEstimate,
   generalizeARMA!,
   narrowARMA!,
-  winsorize!,
+  winsorizequantile,
+  winsorizelevel,
 
   lagwithin!, #FMLagWithin
   differencewithin!,
@@ -174,7 +175,8 @@ export FMLM, #Regression methods
   getR,
   getR²,
   getNeweyWestFunc,
-  getClustered!
+  getClustered!,
+  winsorize!
 
 ##################Custom types
 

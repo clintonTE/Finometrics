@@ -354,7 +354,8 @@ RMS(v1::Vector{Float64}, v2::Vector{Float64})::Float64 =
 #Takes the prop percentile value, and replaces all lower values with that value
 #Then takes the (1-prop) percentile value, and replaces all higher values with that value
 #All calculations skip missing
-function winsorize!(target::AbstractVector{T};
+winsorize!(args...;argwrds...) = error("winsorize! is depreciated. Use winsorizequantile")
+#=function winsorize!(target::AbstractVector{T};
     prop::Float64 = 0.0, sorted::Bool = false)::Nothing where T <: Any
 
   local vcomplete::SubArray{T,1}
@@ -370,4 +371,54 @@ function winsorize!(target::AbstractVector{T};
 
   target .= (f::MFloat64 -> max(minval, min(f,maxval))).(target)
   return nothing
+end=#
+
+
+@inline winsorizelevel(::Missing, ::Real, ::Real) = missing
+@inline winsorizelevel(x::T, lo::T, hi::T) where {T<:Real} = min(max(lo, x), hi)
+function winsorizequantile(v::AbstractVector{T},
+    loprop::Union{T, Missing},
+    hiprop::Union{T, Missing};
+    sorted::Bool = issorted(v)
+    ) where T<:Union{Real,Missing}
+
+  if (loprop < 0) || (loprop > 1.) || (hiprop < 0) || (hiprop > 1.) || (hiprop < loprop)
+    error("nonsensical winsorization threshold loper: $loper hiper: $hiper")
+  end
+
+  local vcomplete =  view(v, (!ismissing).(v)) #don't trust how quantile handles missing
+  local lo::Float64 = quantile(vcomplete, loprop, sorted=sorted)
+  local hi::Float64 = quantile(vcomplete, hiprop, sorted=sorted)
+
+  winsorized::Vector{T} = (winsorizelevel).(v, lo, hi)
+
+  return winsorized
+end
+
+function winsorizequantile(v::AbstractVector{T}, prop::Float64;
+    twosided::Bool = error("twosided selection is required"),
+    sorted::Bool = issorted(v)) where T<:Union{Real,Missing}
+
+  if (prop < 0) || (prop > 1.)
+    error("nonsensical proportion: $prop")
+  end
+
+  local loprop::Float64
+  local hiprop::Float64
+
+  if twosided # we do a two-sided winsorization
+    if prop < 0.5
+      loprop, hiprop = prop, 1-prop
+    else
+      loprop, hiprop = 1-prop, prop
+    end
+  else
+    if prop < 0.5
+      loprop, hiprop = prop, 1.0
+    else
+      loprop, hiprop = 0.0, prop
+    end
+  end
+
+  return winsorizequantile(v, loprop, hiprop, sorted=sorted)
 end

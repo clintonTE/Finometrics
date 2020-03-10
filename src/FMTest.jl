@@ -440,15 +440,28 @@ function testlagwithin2(N=100_000)
 end
 
 
-#LMtest(CuMatrix{Float32}, CuVector{Float32}, N=1_000)
-#@time LMtest(CuMatrix{Float32}, CuVector{Float32}, N=500, testerrors=true, K=10)#, qrtype=CuMatrix{Float32})
-#CuArrays.allowscalar(false)
+function testwinsorizequantile(i=100_000; tol = 10^-8)
+  v::Vector{MFloat64} = rand(i)
+  v = (f->rand()<0.05 ? missing : f).(v)
 
+  @inline completev(v) = view(v, (!ismissing).(v))
 
+  println("test: winsorizequantile(v, .8, twotailed=false)")
+  wv = completev(Finometrics.winsorizequantile(v, .8, twosided=false))
+  println("results (exp=~0.0,0.8): min: $(minimum(wv)), max: $(maximum(wv))")
 
-#CuArrays.allowscalar(false)
-#@time rapidreg(Matrix{Float64}, Vector{Float64}, iter=10, N=1_000_000, K=10,
-#  qrtype=Matrix{Float64}, testprimarywithin = true)
+  println("test: winsorizequantile(v, .3, twotailed=false)")
+  wv = completev(Finometrics.winsorizequantile(v, .3, twosided=false))
+  println("results (exp=~0.3,1.0): min: $(minimum(wv)), max: $(maximum(wv))")
+
+  println("test: winsorizequantile(v, .2, twotailed=true)")
+  wv = completev(Finometrics.winsorizequantile(v, .2, twosided=true))
+  println("results (exp=~0.2,0.8) min: $(minimum(wv)), max: $(maximum(wv))")
+
+  println("autotest: winsorizequantile(v, .8, twotailed=true)")
+  wv2 = completev(Finometrics.winsorizequantile(v, .2, twosided=true))
+  (sum((abs).(wv2 .- wv) .> tol) > 0) && error("symmetric two-tailed winsorization test failed")
+end
 
 function runbasictests()
   @info "Some basic tests. Incomplete, but better than nothing until I get around to making something better"
@@ -460,7 +473,8 @@ function runbasictests()
   #testYearQuarter()
   #testYearMonth()
   #testlaganddifference()
-  testlagwithin2()
+  #testlagwithin2()
+  testwinsorizequantile()
 end
 
 #runbasictests()
