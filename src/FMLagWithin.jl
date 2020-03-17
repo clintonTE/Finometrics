@@ -203,7 +203,7 @@ function lagwithin2!(df::DataFrame, vals::Vector{Symbol}, group::Symbol;
   laggedvals::Vector{Symbol} = (s->Symbol(:L, s)).(vals),
   sorted::Bool = false)
 
-  (!sorted) && sort!(df, [group, date])
+  (!sorted) && sort!(df, (group, date))
 
   return lagwithin2sorted!(df, vals, group, date=date, maxnotstale=maxnotstale, laggedvals=laggedvals)
 end
