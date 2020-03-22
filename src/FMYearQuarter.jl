@@ -3,8 +3,8 @@
 abstract type YearPeriod end
 
 struct YearQuarter <: YearPeriod
-  y::UInt16
-  q::UInt8
+  y::Int16
+  q::Int8
 
   function YearQuarter(y,q)
     q == 1 || q==2 || q==3 || q==4 || error("Invalid YearQuarter $y $q")
@@ -24,8 +24,8 @@ function YearQuarter(f::Real)::YearQuarter
 end
 
 function YearQuarter(d::Date)
-  y::UInt16 = year(d)
-  q::UInt8 = quarterofyear(d)
+  y::Int16 = year(d)
+  q::Int8 = quarterofyear(d)
 
   return YearQuarter(y,q)
 end
