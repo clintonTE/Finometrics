@@ -1,13 +1,14 @@
 #NOTE: Uncomment below bloc for stand alone testing
-
+#WARNING WARNING WARNING don't for get to comment include("test.jl") in Finometics.jl
 #=using Revise
+
 include("Finometrics.jl")
 using Distributions, LinearAlgebra, CuArrays, DataFrames,
  Dates, DataFrames, GLM
 import Base: +, -, ==, >, <, ≥, ≤, length, isless, isequal
 import StatsModels: implicit_intercept
 
-
+const MFloat64 = Union{Float64, Missing}
 #include("Finometrics.jl")
 using Revise
 const FMExpr = Union{Symbol,Expr,Nothing}
@@ -22,8 +23,8 @@ macro mpar(cond, expr)
   end
 end=#
 
-#NOTE: End stand-alonge comment block
 
+#NOTE: End stand-alonge comment block
 
 
 
@@ -294,7 +295,7 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     println("\nHomoskedastic Errors: ", diag(ΣHomosked).^.5)
     runslow && println("Check: ", diag(ΣHomoskedSlow).^.5)
 
-    println("Homoskedastic Errors (w/in): ", diag(ΣHomoskedfixed).^.5)
+    println("Homoskedastic Errors (fixed): ", diag(ΣHomoskedfixed).^.5)
     println("Homoskedastic Errors (w/in): ", diag(ΣHomoskedwithin).^.5)
 
     #get the modified white SEs
@@ -466,14 +467,14 @@ end
 function runbasictests()
   @info "Some basic tests. Incomplete, but better than nothing until I get around to making something better"
 
-  #testMM(100, N=1000, G=10)
-  #@time LMtest(Matrix{Float64}, Vector{Float64},
-  #  N=1_000, testerrors=true, K=5, testprimarywithin=true, runslow=true)#, qrtype=CuMatrix{Float32})
+  testMM(100, N=1000, G=10)
+  @time LMtest(Matrix{Float64}, Vector{Float64},
+    N=1_000, testerrors=true, K=5, testprimarywithin=true, runslow=true)#, qrtype=CuMatrix{Float32})
 
-  #testYearQuarter()
-  #testYearMonth()
-  #testlaganddifference()
-  #testlagwithin2()
+  testYearQuarter()
+  testYearMonth()
+  testlaganddifference()
+  testlagwithin2()
   testwinsorizequantile()
 end
 
