@@ -12,7 +12,7 @@ function homoskedasticΣ!(xqr::FMQR{M}, ε::V, Σ::M = M(undef, lin.K, lin.K);
 
   BLAS.gemm!('N','T',(ε⋅ε)/xqr.N,xqr.Rinv,xqr.Rinv,0.0,Σ)
 
-  Σ .*= dofcorrect #WARNING: dof correction? is it being double counted?
+  Σ .*=
 
   return Σ #[X'X]^-1*σ2
 end
@@ -33,16 +33,16 @@ Output should be identical to the standard methods
 IN: Independent variable X matrix
 OUT: Returns the covariance matrix=#
 getHomoskedΣSlow(args...; keyargs...) = error("use homoskedasticΣslow instead")
-function homoskedasticΣslow(X::M, ε::V)::M where {M<:AbstractMatrix, V<:AbstractVector}
+function homoskedasticΣslow(X::M, ε::V; dofcorrect::Float64=1.0)::M where {M<:AbstractMatrix, V<:AbstractVector}
   T::Type = eltype(V)
 
-  out = Matrix(X' * X)\I .* (ε⋅ε)/(size(X,1)-size(X,2))
-  return out
+  out = Matrix(X' * X)\I .* (ε⋅ε)/size(X,1)
+  return out * dofcorrect
 end
 
 #Convenience method for above: IN: A linear model #OUT: A covariance matrix
 function homoskedasticΣslow(lin::FMLM{M, V}) where {M<:AbstractMatrix, V<:AbstractVector}
-  return homoskedasticΣslow(lin.X, lin.Y.-lin.X * lin.β)::M
+  return homoskedasticΣslow(lin.X, lin.Y.-lin.X * lin.β, dofcorrect = lin.N / lin.dof)::M
 end
 
 
@@ -78,7 +78,7 @@ whiteΣslow(args...; keyargs...) = error("use whiteΣslow instead")
 function whiteΣslow(X::M, ε::V, dofcorrect::Float64=1.0)  where {M<:AbstractMatrix, V<:AbstractVector}
   XXinv::M = (X' * X)\I
 
-  return XXinv * X' * diagm(ε) .^ 2.0 * X * XXinv
+  return XXinv * X' * diagm(ε) .^ 2.0 * X * XXinv .*dofcorrect
 end
 
 #Convenience method for above: IN: A linear model #OUT: A covariance matrix

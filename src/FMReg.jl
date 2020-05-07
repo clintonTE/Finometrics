@@ -33,8 +33,9 @@ function generateX(::Type{M}, df::T, rhs::V)::M where
   #WARNING: This is a HACK! Replace with `nothing` or something else (See StatsModels github)
   #or just redo the whole thing in the GLM framework
   #Will be able to replace the LHS w/0 in subsequent versions
-  lhs_hack::Symbol = names(df)[1]
-  f::FormulaTerm = @eval(@formula($lhs_hack ~ $rhs))
+  #lhs_hack::Symbol = propertynames(df)[1]
+  #f::FormulaTerm = @eval(@formula($lhs_hack ~ $rhs))
+  f::FormulaTerm = @eval(@formula(0 ~ $rhs))
 
   return generateX(M, df, f)
 end
@@ -51,7 +52,7 @@ end=#
 #helper function  to get the list of symbols in an expression
 #IN: A dataframe and a string object, typically representing a formula
 #OUT: a vector of symbols in the string object
-function getSymbolsFromExpr(inexpr::V)::Vector{Symbol} where {V <: FMExpr}
+function symbolsFromExpr(inexpr::V)::Vector{Symbol} where {V <: FMExpr}
   isnothing(inexpr) && return Vector{Symbol}() #special case with no focal var
   symstrings::Vector{String} = split(string(inexpr),
     ['|','=','~',' ','+','*','&',')','(','-'], keepempty=false)
@@ -80,7 +81,7 @@ end
 #helper function for the above, de-nulls entire dataframe
 #IN: a subdataframe #OUT: subdataframe less the null entries
 function cloakmissings(::Type{M}, df::T)::SubDataFrame where {T<:AbstractDataFrame, M<:AbstractMatrix}
-  return cloakmissings(M, df, names(df))
+  return cloakmissings(M, df, propertynames(df))
 end
 
 #####################FMQR Type###########################
@@ -159,8 +160,8 @@ struct FMLM{M<:AbstractMatrix, V<:AbstractVector} <: FMModel
   β::V #beta coefficient
   ε::V #residuals
 
-  Xnames::Vector{Symbol} #names of the X variables
-  Yname::Symbol #names of the Y variables
+  Xnames::Vector{String} #names of the X variables
+  Yname::String #names of the Y variables
 
   clusters::FMClusters  #holds the clusters
 
@@ -168,8 +169,8 @@ end
 
 
 function FMLM(X::M, Y::V; clusters::FMClusters = FMClusters([]),
-        Xnames::Vector{Symbol} = Symbol.(:X, 1:size(X,2)),
-        Yname::Symbol = :Y, dof = size(X,1)-size(X,2),
+        Xnames::Vector{String} = string.(:X, 1:size(X,2)),
+        Yname::String = "Y", dof = size(X,1)-size(X,2),
         qrtype::Type = M)::FMLM where {
           M<:AbstractMatrix, V<:AbstractVector, C<:FMData}
     local xqr::FMQR
@@ -194,7 +195,7 @@ NOTE: RHS expression must be ordered with factors last, otherwise
     the factor names will be incorrect =#
 function FMLM(df::AbstractDataFrame,  Xexpr::FMExpr, Ysym::Symbol,
     ::Type{M} = Matrix{Float64}, ::Type{V} = Vector{Float64};
-    Xnames::Vector{Symbol}=Vector{Symbol}(), Yname::Symbol=:Y,
+    Xnames::Vector{String}=Vector{String}(), Yname::String="Y",
     containsmissings::Bool=true, withinsym::NSymbol = nothing,
     clustersyms::C= nothing,
     qrtype::Type = M, checkwithin::Bool = false)::FMLM  where {
@@ -207,7 +208,7 @@ function FMLM(df::AbstractDataFrame,  Xexpr::FMExpr, Ysym::Symbol,
     (C <: Vector) && (length(clustersyms)>2) && error("Max of 2 clusters supported!!!")
 
     #get the list of symbols from the expression for X
-    Xsyms::Vector{Symbol} = getSymbolsFromExpr(Xexpr)
+    Xsyms::Vector{Symbol} = symbolsFromExpr(Xexpr)
 
     #println("flag2.2")
     #form an array of all symbols for which we want to drop nulls
@@ -263,9 +264,9 @@ function FMLM(df::AbstractDataFrame,  Xexpr::FMExpr, Ysym::Symbol,
     end
 
     #Now assign the names as appropriate
-    Xnamesfull::Vector{Symbol} = Vector{Symbol}(undef, size(Xmodelmatrix,2))
+    Xnamesfull::Vector{String} = Vector{String}(undef, size(Xmodelmatrix,2))
     for i ∈ 1:length(Xnamesfull)
-        Xnamesfull[i] = i≤length(Xnames) ? Xnames[i] : Symbol(:X,i)
+        Xnamesfull[i] = i≤length(Xnames) ? Xnames[i] : string(:X,i)
     end
 
     #get the appropriate matrices and construct the FMLM object
@@ -292,8 +293,8 @@ end
 #transforms the data using the within estimator, including an adjustment to dof
 function FMLM(X::M, Y::V, within::AbstractVector{W};
     clusters::FMClusters = FMClusters([]),
-    Xnames::Vector{Symbol} = (Symbol).(:X, 1:size(X,2)),
-    Yname::Symbol = :Y,
+    Xnames::Vector{String} = (string).(:X, 1:size(X,2)),
+    Yname::String = "Y",
     qrtype::Type = M)::FMLM where {
       W<:FMData, M<:AbstractMatrix, V<:AbstractVector}
 
@@ -352,8 +353,8 @@ end
 #I expect the speed of this version to increase over time
 function FMLMaltwithin(X::M, Y::V, within::Vector{W};
     clusters::FMClusters = FMClusters([]),
-    Xnames::Vector{Symbol} = (Symbol).(:X, 1:size(X,2)),
-    Yname::Symbol = :Y,
+    Xnames::Vector{String} = (string).(:X, 1:size(X,2)),
+    Yname::String = "Y",
     qrtype::Type = M)::FMLM where {
       W<:FMData, M<:AbstractMatrix, V<:AbstractVector}
 
@@ -418,7 +419,8 @@ end
 
 #fucntion for getting regression coefficients
 getTerm(args...; keyargs...) = error("use term instead")
-term(lm::FMLM, s::Symbol) = (lm.β[findfirst(lm.Xnames, s)])::Float64
+term(lm::FMLM, s::String) = (lm.β[findfirst(lm.Xnames, s)])::Float64
+term(lm::FMLM, s::Symbol) = term(lm, string(s))
 
 
 #########################Project!##############################

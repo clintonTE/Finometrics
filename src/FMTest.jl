@@ -1,8 +1,8 @@
 #NOTE: Uncomment below bloc for stand alone testing
 #WARNING WARNING WARNING don't for get to comment include("test.jl") in Finometics.jl
-#=using Revise
+using Revise
 
-include("Finometrics.jl")
+#=include("Finometrics.jl")
 using Distributions, LinearAlgebra, CuArrays, DataFrames,
  Dates, DataFrames, GLM
 import Base: +, -, ==, >, <, ≥, ≤, length, isless, isequal
@@ -21,8 +21,8 @@ macro mpar(cond, expr)
         :($($expr))
     end
   end
-end=#
-
+end
+=#
 
 #NOTE: End stand-alonge comment block
 
@@ -75,16 +75,17 @@ function testlaganddifference(N = 10_000)
   Finometrics.lagwithin!(df, :target1, :group1, :period)
 
   #CASE 2: create lagged fields L2target1 and L2target2
-  Finometrics.lagwithin!(df, [:target1, :target2], [:group1, :group2], :period, lags=2, sorted=false)
+  sort!(df, [:group1, :group2])
+  Finometrics.lagwithin!(df, [:target1, :target2], [:group1, :group2], :period, lags=2)
 
   #CASE 3: difference :Ltarget1 and create DLtarget1 and LLtarget1
-  Finometrics.differencewithin!(df, :Ltarget1, :group1, :period, deletelag=false, sorted=true,
+  Finometrics.differencewithin!(df, :Ltarget1, :group1, :period, deletelag=false,
     laggedname=:LLtarget1e, differencedname=:DLtarget1e)
 
   #CASE 4: difference [:L2target1, :L2target2] creating
   # [:DL2target1e, :DL2target2e], [:LL2target1e, :LL2target2e]
   Finometrics.differencewithin!(df, [:L2target1, :L2target2], [:group1, :group2], :period,
-    deletelag=false, sorted=true, differencednames=[:DL2target1e, :DL2target2e],
+    deletelag=false, differencednames=[:DL2target1e, :DL2target2e],
     laggednames = [:LL2target1e, :LL2target2e])
 
   #validation for cases 1 and 3
@@ -396,12 +397,18 @@ function testlagwithin2(N=100_000)
   maxnotstale = Day(1000)
 
   #execute! (will also sort)
-  Finometrics.lagwithin2!(df, [:val1, :val2],  :group, date=:date) #minimalist version, unsorted
-  Finometrics.lagwithin2!(df, [:val1, :val2],  :group, sorted=true) #minimalist version, sorted
+  try
+    Finometrics.lagwithin2!(df, [:val1, :val2],  :group, date=:date) #minimalist version, unsorted
+    @assert false
+  catch err
+    typeof(err) <: AssertionError && error("lagwithin2 should have failed due to lack of sorting")
+    sort!(df, [:group, :date])
+  end
+  Finometrics.lagwithin2!(df, [:val1, :val2],  :group) #minimalist version, sorted
   Finometrics.lagwithin2!(df, [:val1, :val2],
-    :group, date=:date, sorted=true, maxnotstale = maxnotstale)
+    :group, date=:date, maxnotstale = maxnotstale)
   Finometrics.differencewithin2!(df, [:val1, :val2],
-    :group, date=:date, sorted=true, maxnotstale = maxnotstale)
+    :group, date=:date, maxnotstale = maxnotstale)
 
   df.TLval1 = similar(df.Lval1)
   df.TLval2 = similar(df.Lval2)

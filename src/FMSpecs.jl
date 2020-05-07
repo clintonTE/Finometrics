@@ -10,7 +10,7 @@ struct FMSpecs{T<:Any}
   specnames::Vector{String}
   yspecs::Vector{Symbol}
   xspecs::Vector{FMExpr}
-  xnames::Vector{Vector{Symbol}}
+  xnames::Vector{Vector{String}}
   withinspecs::Vector{FMExpr}
   clusterspecs::Vector{Union{NSymbol, Vector{Symbol}}}
   results::Vector{T}
@@ -26,7 +26,7 @@ function FMSpecs(sizehint::NInt = nothing,
   local specnames::Vector{String} = Vector{String}()
   local yspecs::Vector{Symbol} = Vector{Symbol}()
   local xspecs::Vector{FMExpr} = Vector{FMExpr}()
-  local xnames::Vector{Vector{Symbol}} = Vector{Vector{Symbol}}()
+  local xnames::Vector{Vector{String}} = Vector{Vector{String}}()
   local withinspecs::Vector{FMExpr} = Vector{FMExpr}()
   local clusterspecs::Vector{Union{NSymbol, Vector{Symbol}}} = Vector{Union{NSymbol, Vector{Symbol}}}()
   local results::Vector{T} = Vector{T}()
@@ -74,7 +74,7 @@ function computeFMLMresults!(dfs::S,
   @mpar parallel for i::Int ∈ 1:specs.N[]
     m::FMLM = FMLM(dfs[i], specs.xspecs[i],  specs.yspecs[i], M, V,
       withinsym = specs.withinspecs[i], clustersyms = specs.clusterspecs[i],
-      Xnames=specs.xnames[i], Yname = specs.yspecs[i],
+      Xnames=specs.xnames[i], Yname = "$(specs.yspecs[i])",
       containsmissings=containsmissings, qrtype=qrtype)
     results[i] = specs.aggfunc(m)
   end
@@ -98,7 +98,7 @@ end
 function Base.push!(specs; specname::String = "($(specs.N[]+1))",
   yspec::Symbol = len > 1 ? specs.yspecs[end] : :Y,
   xspec::FMExpr = len > 1 ? specs.xspecs[end] : :X,
-  xnames::Vector{Symbol} = len > 1 ? specs.xspecs[end] : [:intercept, :X],
+  xnames::Vector{<:DField} = len > 1 ? specs.xspecs[end] : ["intercept", "X"],
   withinspec::FMExpr = nothing,
   clusterspec::Union{NSymbol, Vector{Symbol}} = nothing)
 
@@ -106,7 +106,7 @@ function Base.push!(specs; specname::String = "($(specs.N[]+1))",
   push!(specs.specnames, specname)
   push!(specs.yspecs, yspec)
   push!(specs.xspecs, xspec)
-  push!(specs.xnames, xnames)
+  push!(specs.xnames, eltype(xnames) == String ? xnames : (string).(xnames))
   push!(specs.withinspecs, withinspec)
   push!(specs.clusterspecs, clusterspec)
 

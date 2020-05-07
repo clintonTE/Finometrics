@@ -146,6 +146,10 @@ export FMLM, #Regression methods
   CU32,
   CU64,
 
+  DField,
+  MDField,
+  NDField,
+
   #yearmonth types
   YearQuarter,
   MYearQuarter,
@@ -201,6 +205,10 @@ const MSymbol = Union{Symbol, Missing}
 const MString = Union{String, Missing}
 const MDate = Union{Date, Missing}
 const ∞ = Inf
+
+const DField = Union{String, Symbol}
+const MDField = Union{String, Symbol, Missing}
+const NDField = Union{String, Symbol, Nothing}
 
 
 ###VAR Types

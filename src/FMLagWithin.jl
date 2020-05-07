@@ -2,19 +2,16 @@
 #lags a variable in the time series
 #assumes the order field is intended to be in ascending order
 function lagwithin!(df::DataFrame,
-  targets::Vector{Symbol},
-  groups::Vector{Symbol},
-  period::Symbol;
+  targets::Vector{<:DField},
+  groups::Vector{<:DField},
+  period::DField;
   lags::Int=1,
-  laggednames::Vector{Symbol} = (lags ≠ 1 ?
-    (s::Symbol->Symbol(:L, lags, s)).(targets) : (s::Symbol->Symbol(:L, s)).(targets)),
-  sorted::Bool=false)::Nothing
+  laggednames::Vector{<:DField} = (lags ≠ 1 ?
+    (s::DField->Symbol(:L, lags, s)).(targets) : (s::DField->Symbol(:L, s)).(targets)))::Nothing
 
   T::Type = eltype(df[!,period]) #the type of the period column
 
-  if !sorted
-    sort!(df, [groups; period])
-  end
+  issorted(df,[groups; period]) || error("df must be sorted in lagwithin")
 
   Ntargets::Int = length(targets)   #pre-allocate the space
   for t ∈ 1:Ntargets
@@ -52,32 +49,31 @@ end
 
 #helper method to handle the case of a single target and/or group
 lagwithin!(df::DataFrame,
-  targets::Union{Symbol, Vector{Symbol}},
-  groups::Union{Symbol, Vector{Symbol}},
-  period::Symbol;
+  targets::Union{DField, Vector{<:DField}},
+  groups::Union{DField, Vector{<:DField}},
+  period::DField;
   lags::Int=1,
-  laggedname::NSymbol = nothing,
-  laggednames::Vector{Symbol} = (lags ≠ 1 ?
-    (s::Symbol->Symbol(:L, lags, s)).([targets;]) : (s::Symbol->Symbol(:L, s)).([targets;])),
-  sorted::Bool=false)::Nothing = (lagwithin!(df, [targets;], [groups;], period,
-      lags=lags, laggednames=[something(laggedname, laggednames);], sorted=sorted))
+  laggedname::NDField = nothing,
+  laggednames::Vector{<:DField} = (lags ≠ 1 ?
+    (s::DField->Symbol(:L, lags, s)).([targets;]) : (s::DField->Symbol(:L, s)).([targets;]))
+    )::Nothing = (lagwithin!(df, [targets;], [groups;], period,
+      lags=lags, laggednames=[something(laggedname, laggednames);]))
 
 
 #creates a differenced column
 function differencewithin!(df::DataFrame,
-  targets::Vector{Symbol},
-  groups::Vector{Symbol},
-  period::Symbol;
-  differencednames::Vector{Symbol} = (s::Symbol->Symbol(:D, s)).(targets),
-  sorted::Bool=false,
+  targets::Vector{<:DField},
+  groups::Vector{<:DField},
+  period::DField;
+  differencednames::Vector{<:DField} = (s::DField->Symbol(:D, s)).(targets),
   createlag::Bool=true,
   deletelag::Bool=true,
-  laggednames::Vector{Symbol} = (deletelag ?
-    (s::Symbol->Symbol(:L, s, :_temp)).(targets) : (s->Symbol(:L, s)).(targets))
+  laggednames::Vector{<:DField} = (deletelag ?
+    (s::DField->Symbol(:L, s, :_temp)).(targets) : (s->Symbol(:L, s)).(targets))
   )::Nothing
 
   createlag && lagwithin!(df, targets, groups, period,
-    laggednames=laggednames, sorted=sorted)
+    laggednames=laggednames)
   for t ∈ 1:length(targets)
     df[!, differencednames[t]] = df[!, targets[t]] .- df[!, laggednames[t]]
     deletelag && select!(df, Not(laggednames[t]))
@@ -88,19 +84,18 @@ end
 
 #helper method to handle the case of a single target and/or group
 differencewithin!(df::DataFrame,
-  targets::Union{Symbol, Vector{Symbol}},
-  groups::Union{Symbol, Vector{Symbol}},
-  period::Symbol;
-  differencedname::NSymbol = nothing,
-  differencednames::Vector{Symbol} = (s::Symbol->Symbol(:D, s)).([targets;]),
-  sorted::Bool=false,
+  targets::Union{DField, Vector{<:DField}},
+  groups::Union{DField, Vector{<:DField}},
+  period::DField;
+  differencedname::NDField = nothing,
+  differencednames::Vector{<:DField} = (s::DField->Symbol(:D, s)).([targets;]),
   createlag::Bool=true,
   deletelag::Bool=true,
-  laggedname::NSymbol = nothing,
-  laggednames::Vector{Symbol} = (deletelag ?
-    (s::Symbol->Symbol(:L, s, :_temp)).([targets;]) : (s->Symbol(:L, s)).([targets;]))
+  laggedname::NDField = nothing,
+  laggednames::Vector{<:DField} = (deletelag ?
+    (s::DField->Symbol(:L, s, :_temp)).([targets;]) : (s::DField->Symbol(:L, s)).([targets;]))
   )::Nothing = differencewithin!(df, [targets;], [groups;], period,
-    sorted=sorted,  createlag=createlag, deletelag=deletelag,
+    createlag=createlag, deletelag=deletelag,
     differencednames=[something(differencedname, differencednames);],
     laggednames=[something(laggedname, laggednames);])
 
@@ -155,10 +150,10 @@ function lagwithin2sorted(
 end
 
 #lags multiple columns within a dataframe
-function lagwithin2sorted!(df::DataFrame, vals::Vector{Symbol}, group::Symbol;
-  date::Union{Symbol,Nothing} = nothing,
+function lagwithin2sorted!(df::DataFrame, vals::Vector{<:DField}, group::DField;
+  date::NDField = nothing,
   maxnotstale::Any = nothing,
-  laggedvals::Vector{Symbol} = (s->Symbol(:L, s)).(vals))
+  laggedvals::Vector{<:DField} = (s->Symbol(:L, s)).(vals))
 
 
   local laggedgroup::Vector{Union{eltype(df[!,group]), Missing}}
@@ -179,7 +174,7 @@ function lagwithin2sorted!(df::DataFrame, vals::Vector{Symbol}, group::Symbol;
 
   #println(typeof(laggeddate))
   #deploy the lags
-  tasks = @sync((s::Symbol -> Threads.@spawn lagwithin2sorted(
+  tasks = @sync((s::DField -> Threads.@spawn lagwithin2sorted(
     df[!, s], df[!, group], date = isnothing(date) ? nothing : df[!,date],
     laggeddate = laggeddate, maxnotstale = maxnotstale, laggedgroup = laggedgroup)).(vals))
 
@@ -197,32 +192,34 @@ function lagwithin2sorted!(df::DataFrame, vals::Vector{Symbol}, group::Symbol;
 end
 
 
-function lagwithin2!(df::DataFrame, vals::Vector{Symbol}, group::Symbol;
-  date::Union{Symbol,Nothing} = nothing,
+function lagwithin2!(df::DataFrame, vals::Vector{<:DField}, group::DField;
+  date::NDField = nothing,
   maxnotstale::Any = nothing,
-  laggedvals::Vector{Symbol} = (s->Symbol(:L, s)).(vals),
-  sorted::Bool = false)
+  laggedvals::Vector{<:DField} = (s->Symbol(:L, s)).(vals))
 
-  (!sorted) && sort!(df, (group, date))
+  if !isnothing(date)
+    issorted(df, [group, date]) || error("df must be sorted by $group, $date")
+  else
+    issorted(df, [group]) || error("df must be sorted by $group")
+  end
 
   return lagwithin2sorted!(df, vals, group, date=date, maxnotstale=maxnotstale, laggedvals=laggedvals)
 end
 
 function differencewithin2!(df::DataFrame,
-  vals::Vector{Symbol},
-  group::Symbol;
-  date::Union{Symbol,Nothing} = nothing,
-  differencedvals::Vector{Symbol} = (s::Symbol->Symbol(:D, s)).(vals),
-  sorted::Bool=false,
+  vals::Vector{<:DField},
+  group::DField;
+  date::NDField = nothing,
+  differencedvals::Vector{<:DField} = (s::DField->Symbol(:D, s)).(vals),
   createlag::Bool=true,
   deletelag::Bool=true,
   maxnotstale::Any = nothing,
-  laggedvals::Vector{Symbol} = (deletelag ?
-    (s::Symbol->Symbol(:L, s, :_temp)).(vals) : (s->Symbol(:L, s)).(vals))
+  laggedvals::Vector{<:DField} = (deletelag ?
+    (s::DField->Symbol(:L, s, :_temp)).(vals) : (s->Symbol(:L, s)).(vals))
   )::Nothing
 
   createlag && lagwithin2!(df, vals, group, date=date,
-    laggedvals=laggedvals, sorted=sorted, maxnotstale=maxnotstale)
+    laggedvals=laggedvals, maxnotstale=maxnotstale)
   for t ∈ 1:length(vals)
     df[!, differencedvals[t]] = df[!, vals[t]] .- df[!, laggedvals[t]]
     deletelag && select!(df, Not(laggedvals[t]))

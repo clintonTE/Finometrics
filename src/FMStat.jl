@@ -89,7 +89,7 @@ pAutoρ(v::T where T <: AbstractVector, lags::T where T<:AbstractRange)::Vector{
   ((l::Int)->pAutoρ(v,l)).(lags)
 
 #Lag a series in a dataframe
-function lagDF!(DF::DataFrame, target::Symbol, lags::Int = 1; name::Symbol = Symbol("$(target)L$lags"))::DataFrame
+function lagDF!(DF::DataFrame, target::DField, lags::Int = 1; name::DField = Symbol("$(target)L$lags"))::DataFrame
   DF[:,name] = similar(DF[:,target])
   DF[:,name] .= missing
   DF[(lags+1):end,name] = DF[1:(end-lags),target]
@@ -97,8 +97,8 @@ function lagDF!(DF::DataFrame, target::Symbol, lags::Int = 1; name::Symbol = Sym
   return DF
 end
 
-function lagDF!(DF::DataFrame, targets::Vector{Symbol}, lags::Int = 1;
-  names::Vector{Symbol}= ((s::Symbol)->Symbol("$(s)L$lags")).(targets))
+function lagDF!(DF::DataFrame, targets::Vector{DField}, lags::Int = 1;
+  names::Vector{DField}= ((s::DField)->Symbol("$(s)L$lags")).(targets))
 
   for i::Int ∈ 1:length(targets)
     lagDF!(DF, targets[i], lags, name = names[i])

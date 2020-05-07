@@ -181,7 +181,7 @@ OUT: A latex table string
 =#
 function textable(models::Vector{FMLM},
     getΣ::T where T<:Union{Function, Vector{Function}},
-    rows::Vector{Symbol};
+    rows::Vector{String};
     colnames::Vector{Vector{String}} = [["($i)" for i ∈ 1:length(models)]],
     contentrownames::Vector{String} = String.(rows),
     descrownames::Vector{String}=Vector{String}(),
@@ -216,7 +216,7 @@ function textable(models::Vector{FMLM},
   #pull out the β coefficients and N
   βs::Vector{Vector{Float64}} = [models[i].β for i::Int ∈ 1:Ncols]
   Ns::Vector{Int} = [models[i].N for i ∈ 1:Ncols]
-  Xnames::Vector{Vector{Symbol}} = [models[i].Xnames for i::Int ∈ 1:Ncols]
+  Xnames::Vector{Vector{String}} = [models[i].Xnames for i::Int ∈ 1:Ncols]
 
   #get the standard errors
   for c ∈ 1:Ncols
@@ -257,9 +257,9 @@ stars, a scaling factor, and the number of digits (rounding level)=#
 function getcontentmatrices!(;
     βs::Vector{Vector{Float64}} = error("βs is a required argument for getcontentmatrices"),
     σs::Vector{Vector{Float64}} = error("σs is a required argument for getcontentmatrices"),
-    Xnames::Vector{Vector{Symbol}} = error("Xnames is a required argument for getcontentmatrices"),
+    Xnames::Vector{Vector{String}} = error("Xnames is a required argument for getcontentmatrices"),
     Ns::Vector{Int} = error("Ns is a required argument for getcontentmatrices"),
-    rows::Vector{Symbol} = error("rows is a required argument for getcontentmatrices"),
+    rows::Vector{String} = error("rows is a required argument for getcontentmatrices"),
     stars::Bool=true, #whether to display signficance stars
     starlvls::Vector{Float64} = [.9, .95, .99],  #cutoffs for signficance (must be sorted)
     starstrings::Vector{String} =

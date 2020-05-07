@@ -46,118 +46,20 @@ function FMΦInv(p::Float64)::Float64
     return ans
 end
 
-
-
 FMΦ(z::Real)::Real = 0.5+0.5*erf(z*sqrt2Inv)
 FMϕ(z::Real)::Real = sqrt2PiInv*exp(-z^2.0/2.0)
-
-
-#in-place binary search, returns only a boolean value
-#could be perhaps optimized 
-function inSorted(val::T, B::Vector{T})::Bool where T<:Any
-
-
-  searched::Bool = false
-  low::Int = 1
-  high::Int = length(B)
-  pivot::T = B[(high+low) ÷ 2]
-  found::Bool = false
-
-  #in-place binary sort
-  while !found && !searched
-
-    #println("high: $high low: $low mid: $((high+low)÷2) pivot: $pivot")
-
-    if val > pivot
-      low = (high+low) ÷ 2 + 1
-    elseif val < pivot
-      high = (high+low) ÷ 2 - 1
-    else
-      found = true
-    end
-
-    if high-low ≤ 1
-      searched = true
-      found = val == B[low] || val == B[high]
-    end
-    pivot = B[(high+low) ÷ 2]
-  end
-
-  return found
-end
-
-#=function testInSorted(;N::Int = 2000, K::Int = 10_000)
-
-  for i ∈ 1:K
-    A::Vector{Int} = rand(1:N, N)
-    B::Vector{Int} = rand(1:N, N)
-
-    sort!(B)
-    for j ∈ 1:length(A)
-      if inSorted(A[j],B) ≠ (A[j] ∈ B)
-        error("inSorted:$(inSorted(A[j],B)) while A∈B:$(A[j] ∈ B)\nA: $(A[j])\nB:$B")
-      end
-    end
-  end
-end
-
-@time testInSorted()=#
-
-#returns a list of all elements in A
-#compare in performance to setdiff. Maintains order unless sort=true
-function ANotB(A::Vector{T}, B::Vector{T};
-  sort::Bool=false, sorted::Bool=false) where T<:Any
-
-  if !sort && !sorted
-    A = deepcopy(A)
-    B = deepcopy(B)
-  end
-
-  #Force mergesort to deal with sorted cases
-  if !sorted
-    if !issorted(A)
-      sort!(A)
-    end
-    if !issorted(B)
-      sort!(B)
-    end
-  end
-
-  numA::Int = length(A)
-  numB::Int = length(B)
-
-  findings::Vector{Bool} = Vector{Bool}(numA)
-
-
-  @fastmath @inbounds @simd for i ∈ 1:numA
-    findings[i] = length(searchsorted(B,A[i]))>0
-  end
-
-  return A[findings]
-
-end
-
-function ANotBTest(N::Int = 1_000_000)
-  println("\nStarting test of algorithm N=$N")
-  A::Vector{Symbol} = (Symbol).(rand(1:N, N))
-  B::Vector{Symbol} = (Symbol).(rand(1:N, N))
-
-  @time setdiff(A,B) #for comparison
-  @time ANotB(A,B, sort=true)
-end
-
 
 #vcats like with rbind in r
 function vbind(df1::AbstractDataFrame, df2::AbstractDataFrame)::AbstractDataFrame
   #get info on what we are joining
-  fields1::Vector{Symbol} = names(df1)
-  fields2::Vector{Symbol} = names(df2)
-  allFields::Vector{Symbol} = union(fields1, fields2)
+  fields1::Vector{<:DField} = names(df1)
+  fields2::Vector{<:DField} = names(df2)
+  allFields::Vector{<:DField} = union(fields1, fields2)
 
   rows1::Int = size(df1,1)
   rows2::Int = size(df2,1)
 
-  for f::Symbol ∈ setdiff(allFields, fields1)
+  for f::DField ∈ setdiff(allFields, fields1)
     origType::Type = eltype(df2[f])
 
     if !(Missing <: origType) #in this case we need to promote the eltype
@@ -168,7 +70,7 @@ function vbind(df1::AbstractDataFrame, df2::AbstractDataFrame)::AbstractDataFram
     df1[ f] = Vector{origType}(missing, rows1)
   end
 
-  for f::Symbol ∈ setdiff(allFields, fields2)
+  for f::DField ∈ setdiff(allFields, fields2)
     origType = eltype(df1[f])
 
     if !(Missing <: origType) #in this case we need to promote the eltype
