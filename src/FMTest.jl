@@ -24,9 +24,7 @@ macro mpar(cond, expr)
 end
 =#
 
-#NOTE: End stand-alonge comment block
-
-
+#NOTE: End stand-alone comment block
 
 function testMM(df::DataFrame, loops=1)
   #println(df)
@@ -404,7 +402,7 @@ function testlagwithin2(N=100_000)
     typeof(err) <: AssertionError && error("lagwithin2 should have failed due to lack of sorting")
     sort!(df, [:group, :date])
   end
-  Finometrics.lagwithin2!(df, [:val1, :val2],  :group) #minimalist version, sorted
+  Finometrics.lagwithin2!(df, [:val1, :val2],  :group, date=:date) #minimalist version, sorted
   Finometrics.lagwithin2!(df, [:val1, :val2],
     :group, date=:date, maxnotstale = maxnotstale)
   Finometrics.differencewithin2!(df, [:val1, :val2],
@@ -485,4 +483,4 @@ function runbasictests()
   testwinsorizequantile()
 end
 
-#runbasictests()
+runbasictests()

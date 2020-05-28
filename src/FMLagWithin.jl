@@ -105,10 +105,16 @@ differencewithin!(df::DataFrame,
 ###if these work, consider moving to finometrics
 #lag within a group
 function lagwithin2sorted(vals::AbstractVector{T},
-  group::AbstractVector{G}, laggedgroup::Vector{<:Union{G, Missing}},
-  ::Type{T}, ::Type{G}) where {T<:Any, G<:Any}
+  group::AbstractVector{G}, ::Type{T}, ::Type{G};
+  laggedgroup::Vector{<:Union{G, Missing}}=error("laggedgroup is required"),
+  ) where {T<:Any, G<:Any}
 
+
+  #idea here is to lag everyting, then account for the boundaries between groups
+  #lag everything
   lagged::Vector{Union{T, Missing}} = [missing; vals[1:(end-1)]]
+
+  #fixes lags across groups
   missingindicies::Vector{Bool} = ((lg,g)->
     ismissing(lg) || ismissing(g) || lg≠g).(laggedgroup,group)
   lagged[missingindicies] .= missing
@@ -117,8 +123,10 @@ function lagwithin2sorted(vals::AbstractVector{T},
 end
 
 function eliminatestaledates(lagged::AbstractVector{T}, date::AbstractVector{D},
-  laggeddate::AbstractVector{Union{D,Missing}}, maxnotstale::Any,
-  ::Type{T}, ::Type{D}) where {T<:Any, D<:Any}
+  ::Type{T}, ::Type{D};
+  laggeddate::AbstractVector{Union{D,Missing}}=error("laggeddate is required"),
+  maxnotstale::Any=error("maxnotstale is required"),
+  ) where {T<:Any, D<:Any}
 
   missingindicies::Vector{Bool} = ((ld, d)->
     ismissing(ld) || ismissing(d) || d - maxnotstale > ld).(laggeddate, date)
@@ -129,22 +137,18 @@ end
 
 function lagwithin2sorted(
   vals::AbstractVector,
-  group::AbstractVector;
-  date::Union{AbstractVector{D},Nothing} = nothing,
-  laggeddate::Union{Vector{Union{D,Missing}}, Nothing} = nothing,
-  maxnotstale::Any = nothing,
-  laggedgroup::Vector{Union{G, Missing}} =
-    Vector{Union{eltype(group), Missing}}([missing; group[1:(end-1)]])) where {G<:Any, D<:Any}
+  group::AbstractVector,
+  date::AbstractVector{D};
+  laggedgroup::Vector{Union{G, Missing}}=error("lagged group is required with lagwithin2sorted"),
+  laggeddate::Vector{Union{D,Missing}}=error(
+    "lagged group is required with lagwithin2sorted if maxnotstale is provided"),
+  maxnotstale::Any = error(
+    "maxnotstale is required if date vec is provided in lagwithin2sorted")) where {G<:Any, D<:Any}
 
 
-  local lagged = lagwithin2sorted(vals, group, laggedgroup, eltype(vals), eltype(group))
-
-  if !isnothing(maxnotstale)
-    if isnothing(laggeddate)
-      laggeddate = [missing; [date[1:(end-1)]]]
-    end
-    lagged = eliminatestaledates(lagged, date, laggeddate, maxnotstale, eltype(lagged), eltype(date))
-  end
+  local lagged = lagwithin2sorted(vals, group, eltype(vals), eltype(group), laggedgroup=laggedgroup)
+  lagged = eliminatestaledates(lagged, date, eltype(lagged), eltype(date),
+    laggeddate=laggeddate, maxnotstale=maxnotstale)
 
   return lagged
 end
@@ -157,35 +161,29 @@ function lagwithin2sorted!(df::DataFrame, vals::Vector{<:DField}, group::DField;
 
 
   local laggedgroup::Vector{Union{eltype(df[!,group]), Missing}}
-  local laggeddate::(isnothing(date) ? Nothing : Vector{Union{eltype(df[!,date]), Missing}})
+  local laggeddate::Vector{Union{eltype(df[!,date]), Missing}}
 
 
   #lag the groups, and dates if needed, once
   laggedgroup = Vector{Union{eltype(group), Missing}}([missing; df[!, group][1:(end-1)]])
-  #println(!isnothing(date))
-  if (!isnothing(date))
-    laggeddate = [missing; df[!,date][1:(end-1)]]
-  else
-    laggeddate = nothing
-  end
-  #println(typeof(laggeddate))
   #allocate the taskes for multithreading
   tasks::Vector{Task} = Vector{Task}(undef, length(vals))
 
-  #println(typeof(laggeddate))
   #deploy the lags
-  tasks = @sync((s::DField -> Threads.@spawn lagwithin2sorted(
-    df[!, s], df[!, group], date = isnothing(date) ? nothing : df[!,date],
-    laggeddate = laggeddate, maxnotstale = maxnotstale, laggedgroup = laggedgroup)).(vals))
+  if maxnotstale === nothing
+    tasks = @sync((s::DField -> Threads.@spawn lagwithin2sorted(
+      df[!, s], df[!, group], eltype(df[!, s]), eltype(df[!, group]),
+      laggedgroup=laggedgroup)).(vals))
+  else
+    laggeddate = [missing; df[!,date][1:(end-1)]]
+    tasks = @sync((s::DField -> Threads.@spawn lagwithin2sorted(
+      df[!, s], df[!, group], df[!,date],
+      laggedgroup=laggedgroup, laggeddate = laggeddate, maxnotstale = maxnotstale)).(vals))
+  end
 
 
   for i ∈ 1:length(vals)
-    #println(typeof(@fetch tasks[i]))
     df[!, laggedvals[i]] = fetch(tasks[i])
-    #=df[!, laggedvals[i]] = lagwithin2sorted(
-      df[!, vals[i]], df[!, group], date = isnothing(date) ? nothing : df[!,date],
-      laggeddate = convert(Union{eltype(date), Missing}, laggeddate),
-      maxnotstale = maxnotstale, laggedgroup = laggedgroup)=#
   end
 
   return nothing
@@ -193,15 +191,11 @@ end
 
 
 function lagwithin2!(df::DataFrame, vals::Vector{<:DField}, group::DField;
-  date::NDField = nothing,
+  date::DField = error("date field is now required"),
   maxnotstale::Any = nothing,
   laggedvals::Vector{<:DField} = (s->Symbol(:L, s)).(vals))
 
-  if !isnothing(date)
-    issorted(df, [group, date]) || error("df must be sorted by $group, $date")
-  else
-    issorted(df, [group]) || error("df must be sorted by $group")
-  end
+  issorted(df, [group, date]) || error("df must be sorted by $group, $date")
 
   return lagwithin2sorted!(df, vals, group, date=date, maxnotstale=maxnotstale, laggedvals=laggedvals)
 end
@@ -209,7 +203,7 @@ end
 function differencewithin2!(df::DataFrame,
   vals::Vector{<:DField},
   group::DField;
-  date::NDField = nothing,
+  date::DField = error("date field is now required"),
   differencedvals::Vector{<:DField} = (s::DField->Symbol(:D, s)).(vals),
   createlag::Bool=true,
   deletelag::Bool=true,
