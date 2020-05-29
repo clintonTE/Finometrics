@@ -20,11 +20,11 @@ using  DataFrames, Distributions, StatsBase, GLM,
   Dates, NLopt, LinearAlgebra, StatsModels, Formatting
 
 try
-  using CuArrays
-  CuArrays.allowscalar(false) #default
+  using CUDA
+  CUDA.allowscalar(false) #default
 catch
   println("Note: CuArrays not installed")
-  CuArray = Nothing #allows checks for CuArrays to work (should all return false)
+  CUDA = Nothing #allows checks for CuArrays to work (should all return false)
 end
 
 #=function testfunc()

@@ -14,9 +14,9 @@ function generateX(::Type{M}, df::T, f::FormulaTerm)::M where
 
   #f = apply_schema(f, schema(f,df), StatisticalModel)
   #m = modelcols(f.rhs, df)
-  (M<:CuArray) && CuArrays.allowscalar(true)
+  (M<:CuArray) && CUDA.allowscalar(true)
   m::M = ModelMatrix(ModelFrame(f, df)).m
-  (M<:CuArray) && CuArrays.allowscalar(false)
+  (M<:CuArray) && CUDA.allowscalar(false)
 
   return m
 end
@@ -71,9 +71,9 @@ function cloakmissings(::Type{M}, df::T, syms::Vector{Symbol})::SubDataFrame whe
     T<:AbstractDataFrame, M<:AbstractMatrix}
   local sdf::SubDataFrame
 
-  (M <: CuArray) && CuArrays.allowscalar(true) #WARNING- this is expensive!
+  (M <: CuArray) && CUDA.allowscalar(true) #WARNING- this is expensive!
   sdf = view(df,completecases(df[!,syms]),:)
-  (M <: CuArray) && CuArrays.allowscalar(false)
+  (M <: CuArray) && CUDA.allowscalar(false)
 
   return sdf
 end

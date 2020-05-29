@@ -3,7 +3,7 @@
 using Revise
 
 #=include("Finometrics.jl")
-using Distributions, LinearAlgebra, CuArrays, DataFrames,
+using Distributions, LinearAlgebra, CUDA, DataFrames,
  Dates, DataFrames, GLM
 import Base: +, -, ==, >, <, ≥, ≤, length, isless, isequal
 import StatsModels: implicit_intercept
@@ -483,4 +483,4 @@ function runbasictests()
   testwinsorizequantile()
 end
 
-runbasictests()
+#runbasictests()
