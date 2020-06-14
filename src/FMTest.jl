@@ -21,8 +21,8 @@ macro mpar(cond, expr)
         :($($expr))
     end
   end
-end
-=#
+end=#
+
 
 #NOTE: End stand-alone comment block
 
@@ -283,7 +283,8 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     xspecfixed = Meta.parse(join((string).(xnamesfixed),"+"))
     linfixed = Finometrics.FMLM(df, xspecfixed, :Y, M, V, #withinsym=:C1,
       clustersyms=[:C1, :C2], qrtype=qrtype, checkwithin=testprimarywithin, containsmissings=false)
-    linwithin::Finometrics.FMLM = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:G,
+    xspecwithin = Meta.parse("$(join((string).(xnames),"+")) + 0")
+    linwithin::Finometrics.FMLM = Finometrics.FMLM(df, xspecwithin, :Y, M, V, withinsym=:G,
       clustersyms=[:C1, :C2], checkwithin=true, qrtype=qrtype)
     ΣHomoskedfixed::Matrix{Float64} = Finometrics.homoskedasticΣ!(linfixed)
     ΣHomoskedwithin::Matrix{Float64} = Finometrics.homoskedasticΣ!(linwithin)
@@ -296,6 +297,9 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
 
     println("Homoskedastic Errors (fixed): ", diag(ΣHomoskedfixed).^.5)
     println("Homoskedastic Errors (w/in): ", diag(ΣHomoskedwithin).^.5)
+    @info "check for warnings if intercept + within"
+    linwithin = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:G,
+      clustersyms=[:C1, :C2], checkwithin=true, qrtype=qrtype)
 
     #get the modified white SEs
     ΣMWhite::Matrix{Float64} = similar(ΣHomosked)
@@ -322,11 +326,11 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     println("\nClustered Errors: ",diag(Σclustered).^.5)
     println("Check: ", diag(ΣclusteredChk ).^.5)
 
-    linalt2 = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:G,
+    linalt2 = Finometrics.FMLM(df, xspecwithin, :Y, M, V, withinsym=:G,
       clustersyms=[:C1,:C2], qrtype=qrtype, checkwithin=testprimarywithin, containsmissings=false)
-    Finometrics.clusteredΣ!(linalt2, Σclustered, clusters = [linalt2.clusters[1]], testequivelance=true)
-
-    Finometrics.clusteredΣ!(linalt2, Σclustered, testequivelance=true)
+    Σwithinclustered::M = M(undef, linalt2.K, linalt2.K)
+    Finometrics.clusteredΣ!(linalt2, Σwithinclustered, clusters = [linalt2.clusters[1]], testequivelance=true)
+    Finometrics.clusteredΣ!(linalt2, Σwithinclustered, testequivelance=true)
 
 
     #get the nw SEs

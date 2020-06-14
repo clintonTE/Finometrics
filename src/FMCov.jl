@@ -96,6 +96,9 @@ function clusteredΣ!(X::M, xqr::FMQR{M}, ε::V, clusters::C,
     Σ::M = M(undef, xqr.K, xqr.K),
     dof::Int = xqr.N-xqr.K)::M where {M<:AbstractMatrix, V<:AbstractVector, C<:AbstractVector}
 
+  #@info "xqr.K: $(xqr.K)"
+  #@info "Σ: $(size(Σ))"
+
   #convenience vectors and values
   inddf::DataFrame = DataFrame(clusters=clusters, idx = 1:xqr.N)
   sindfs::GroupedDataFrame = groupby(inddf, :clusters)
@@ -119,7 +122,16 @@ function clusteredΣ!(X::M, xqr::FMQR{M}, ε::V, clusters::C,
   dofcorrect::Float64 = Nclusters/(Nclusters-1.)*(xqr.N-1.)/dof #small sample correction
 
   if M<:Matrix{Float64}
-    BLAS.gemm!('N','N',dofcorrect,RRinvB,RRinv,0.0,Σ)
+    ##try
+      BLAS.gemm!('N','N',dofcorrect,RRinvB,RRinv,0.0,Σ)
+    #=catch err
+      @info "RRinvB size: $(size(RRinvB))"
+      @info "RRinv size: $(size(RRinv))"
+      @info "Σ size: $(size(Σ))"
+      @info "B size: $(size(B))"
+      @info "xqr.K: $(xqr.K)"
+      error("err: $err")
+    end=#
   else
     Σ = Matrix(BLAS.gemm('N','N',dofcorrect,RRinvB,RRinv))
   end
@@ -133,7 +145,7 @@ function clusteredΣ!(lin::FMLM{M, V}, Σ₁::M = M(undef, lin.K, lin.K);
     clusters::Vector{<:Vector}#=Union{FMClusters, Vector{<:FMData}}=# = lin.clusters, #allows for an override on the standard errors
     testequivelance::Bool = false)::M where {M<:AbstractMatrix, V<:AbstractVector}
 
-
+  @assert lin.K == size(Σ₁,1) == size(Σ₁,2)
   length(clusters) ∈ [1,2] || error("Illegal number of clusters = $(length(clusters))")
   clusteredΣ!(lin.X, lin.xqr, lin.ε, clusters[1], Σ₁, lin.dof)
   if length(clusters) == 2

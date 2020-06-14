@@ -300,11 +300,15 @@ function FMLM(X::M, Y::V, within::AbstractVector{W};
 
     Xmat::Matrix{Float64} = X
     Yvec::Vector{Float64} = Y
+    Xstart::Int = 1
 
-    #@info "Using legacy within algorithm"
+    if minimum(Xmat[:,1]) ≈ maximum(Xmat[:,1]) ≈ 1.0
+      @warn("intercept with within effects detected- problem is not well posed
+        answer may be wrong!!! (it might be ok, but why take the risk?)
+        remediate by using +0 in the rhs regression expression")
+      Xstart = 2
+    end
 
-
-    #println("flag4")
     #we get the unique values and make a two way table
     #tVars::Vector{T} = unique(tFI)
     ivars::Vector{W} = unique(within)
@@ -327,13 +331,13 @@ function FMLM(X::M, Y::V, within::AbstractVector{W};
       NXY[withincode[r]] += 1.0
     end
 
-    @fastmath for c::Int ∈2:K, r ∈1:N
+    @fastmath for c::Int ∈Xstart:K, r ∈1:N
       meanXY[withincode[r],c] += Xmat[r,c]
     end
 
     meanXY ./= NXY
 
-    @fastmath for c::Int ∈2:K, r::Int ∈1:N
+    @fastmath for c::Int ∈Xstart:K, r::Int ∈ 1:N
       Xmat[r,c] -= meanXY[withincode[r],c]
     end
 
@@ -371,6 +375,14 @@ function FMLMaltwithin(X::M, Y::V, within::Vector{W};
     K::Int = size(X,2)
     N::Int = size(X,1)
 
+    firstcolintercept::Bool = false
+    if minimum(Xmat[:,1]) ≈ maximum(Xmat[:,1]) ≈ 1.0
+      @warn("intercept with within effects detected- problem is not well posed
+        answer may be wrong!!! (it might be ok, but why take the risk?)
+        remediate by using +0 in the rhs regression expression")
+      firstcolintercept = true
+    end
+
 
     #println("$N,$K,$iN,$(size(NXY))")
     #warning change these if multi-threading
@@ -387,7 +399,10 @@ function FMLMaltwithin(X::M, Y::V, within::Vector{W};
 
       meanY::Float64 = mean(sY)
       meanX .= mean(sX, dims=1) #This is actually a row vector
-      meanX[1] = 0.0 #WARNING: Assumes first column is the intercept
+
+      if firstcolintercept
+        meanX[1] = 0.0 #WARNING: Assumes first column is the intercept
+      end
 
       sY .-= meanY
       sX .-= meanX
