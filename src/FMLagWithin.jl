@@ -105,8 +105,7 @@ differencewithin!(df::DataFrame,
 ###if these work, consider moving to finometrics
 #lag within a group
 function lagwithin2sorted(vals::AbstractVector{T},
-  group::AbstractVector{G}, ::Type{T}, ::Type{G};
-  laggedgroup::Vector{<:Union{G, Missing}}=error("laggedgroup is required"),
+  group::AbstractVector{G}, laggedgroup::Vector{<:Union{G, Missing}}, ::Type{T}, ::Type{G};
   ) where {T<:Any, G<:Any}
 
 
@@ -120,6 +119,13 @@ function lagwithin2sorted(vals::AbstractVector{T},
   lagged[missingindicies] .= missing
 
   return lagged
+end
+
+#no dataframe version - just lags the vector
+#not called in the dataframe versions
+function lagwithin2sorted(vals::TV,group::TG) where {TV, TG}
+  laggedgroup = Vector{Union{eltype(group), Missing}}([missing; group[1:(end-1)]])
+  return lagwithin2sorted(vals, group, laggedgroup, eltype(TV), eltype(TG))
 end
 
 function eliminatestaledates(lagged::AbstractVector{T}, date::AbstractVector{D},
@@ -146,7 +152,7 @@ function lagwithin2sorted(
     "maxnotstale is required if date vec is provided in lagwithin2sorted")) where {G<:Any, D<:Any}
 
 
-  local lagged = lagwithin2sorted(vals, group, eltype(vals), eltype(group), laggedgroup=laggedgroup)
+  local lagged = lagwithin2sorted(vals, group, laggedgroup, eltype(vals), eltype(group))
   lagged = eliminatestaledates(lagged, date, eltype(lagged), eltype(date),
     laggeddate=laggeddate, maxnotstale=maxnotstale)
 
@@ -172,8 +178,8 @@ function lagwithin2sorted!(df::DataFrame, vals::Vector{<:DField}, group::DField;
   #deploy the lags
   if maxnotstale === nothing
     tasks = @sync((s::DField -> Threads.@spawn lagwithin2sorted(
-      df[!, s], df[!, group], eltype(df[!, s]), eltype(df[!, group]),
-      laggedgroup=laggedgroup)).(vals))
+      df[!, s], df[!, group], laggedgroup, eltype(df[!, s]), eltype(df[!, group]),
+      )).(vals))
   else
     laggeddate = [missing; df[!,date][1:(end-1)]]
     tasks = @sync((s::DField -> Threads.@spawn lagwithin2sorted(

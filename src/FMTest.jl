@@ -1,8 +1,8 @@
 #NOTE: Uncomment below bloc for stand alone testing
 #WARNING WARNING WARNING don't for get to comment include("test.jl") in Finometics.jl
-using Revise
+#=using Revise
 
-#=include("Finometrics.jl")
+include("Finometrics.jl")
 using Distributions, LinearAlgebra, CUDA, DataFrames,
  Dates, DataFrames, GLM
 import Base: +, -, ==, >, <, ≥, ≤, length, isless, isequal
@@ -409,6 +409,9 @@ function testlagwithin2(N=100_000)
   Finometrics.lagwithin2!(df, [:val1, :val2],  :group, date=:date) #minimalist version, sorted
   Finometrics.lagwithin2!(df, [:val1, :val2],
     :group, date=:date, maxnotstale = maxnotstale)
+
+  #test the no dataframe version
+  df.vecLval1 = Finometrics.lagwithin2sorted(df.val1,df.group)
   Finometrics.differencewithin2!(df, [:val1, :val2],
     :group, date=:date, maxnotstale = maxnotstale)
 
@@ -428,8 +431,10 @@ function testlagwithin2(N=100_000)
   for r ∈ eachrow(df)
     if ismissing(r.Lval1)
       inequalities += (!ismissing(r.TLval1))
+      inequalities += (!ismissing(r.vecLval1))
     else
       inequalities += (!(r.Lval1==r.TLval1))
+      inequalities += (!(r.vecLval1==r.TLval1))
       if !ismissing(r.val1)
         inequalities += (!(r.val1-r.TLval1 == r.Dval1))
       end
