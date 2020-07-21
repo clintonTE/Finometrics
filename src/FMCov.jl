@@ -12,7 +12,7 @@ function homoskedasticΣ!(xqr::FMQR{M}, ε::V, Σ::M = M(undef, lin.K, lin.K);
 
   BLAS.gemm!('N','T',(ε⋅ε)/xqr.N,xqr.Rinv,xqr.Rinv,0.0,Σ)
 
-  Σ .*=
+  Σ .*= dofcorrect
 
   return Σ #[X'X]^-1*σ2
 end

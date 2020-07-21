@@ -122,7 +122,7 @@ function FMQR(::Type{T}, X::M)::FMQR where {T<:AbstractMatrix, M<:AbstractMatrix
   Q = T<:CuArray ? CuMatrix(QRcompact.Q) : QRcompact.Q
 
   try
-    Rinv = T<:CuArray ? Matrix(R)\I : R\I
+    Rinv = T<:CuArray ? pinv(Matrix(R)) : pinv(R)
   catch
     println("X matrix:")
     display(X)

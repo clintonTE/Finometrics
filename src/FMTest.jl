@@ -218,7 +218,9 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     qrtype::Type = M, iter::Int = 1, testprimarywithin::Bool = false, runslow::Bool = true) where {
     M<:AbstractMatrix, V<:AbstractVector}
 
-  @warn "Testing LM. Checks are manual: Must compare outputs. Automate this at some point."
+  @warn "Testing LM. Most tests are automated at this point but
+    some tests, like cluster equivelency, are manual. Generally though, for a quick look
+    a lack of error should indicate nothing horrific is going on."
   local lin::Finometrics.FMLM
 
   #Allocate
@@ -275,9 +277,14 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
 
     #print the coefficients
     println("\nCoefficients: ",lin.β)
-    println("Model coeff: ", ((lin.X' * lin.X)\I) * lin.X' * lin.Y)
+    modelcoef = ((lin.X' * lin.X)\I) * lin.X' * lin.Y
+    println("Model coeff: ", modelcoef)
+    @assert modelcoef ≈ lin.β
     A::Matrix{Float64} = [ones(N) df.X1 df.X2 df.X3 df.X4 df.X5]
-    println("Manual coef:", ((A' * A)\I) * A' * Y)
+    manualcoef = ((A' * A)\I) * A' * Y
+    @assert manualcoef ≈ lin.β
+    println("Manual coef:", manualcoef)
+    @info "passed coefficient test"
 
     xnamesfixed = [xnames; :G]
     xspecfixed = Meta.parse(join((string).(xnamesfixed),"+"))
@@ -291,12 +298,23 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
 
     println("Coefficients (fixed G): ",linfixed.β)
     println("Coefficients (w/in G): ",linwithin.β)
+    @assert linwithin.β ≈ linfixed.β[2:(K+1)]
+    @info "passed coefficients fixed effect vs within test"
 
-    println("\nHomoskedastic Errors: ", diag(ΣHomosked).^.5)
-    runslow && println("Check: ", diag(ΣHomoskedSlow).^.5)
+    homoskederr = diag(ΣHomosked).^.5
+    homoskederrslow = diag(ΣHomoskedSlow).^.5
+    println("\nHomoskedastic Errors: ", homoskederr)
+    runslow && println("Check: ", homoskederrslow)
+    runslow && (@assert homoskederr ≈ homoskederrslow)
+    runslow && @info "passed homosked test"
 
-    println("Homoskedastic Errors (fixed): ", diag(ΣHomoskedfixed).^.5)
-    println("Homoskedastic Errors (w/in): ", diag(ΣHomoskedwithin).^.5)
+    homoskederrfixed = diag(ΣHomoskedfixed)[2:(1+K)].^.5
+    homoskederrwithin = diag(ΣHomoskedwithin).^.5
+    println("Homoskedastic Errors (fixed): ", homoskederrfixed)
+    println("Homoskedastic Errors (w/in): ", homoskederrwithin)
+    @assert homoskederrfixed ≈ homoskederrwithin
+    @info "passed homosked fixed effects vs within test"
+
     @info "check for warnings if intercept + within"
     linwithin = Finometrics.FMLM(df, xspec, :Y, M, V, withinsym=:G,
       clustersyms=[:C1, :C2], checkwithin=true, qrtype=qrtype)
@@ -309,6 +327,8 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     #print the coefficients
     println("\nModified White Errors: ",diag(ΣMWhite).^.5)
     runslow && println("Check: ", diag(ΣMWhiteSlow).^.5)
+    runslow && (@assert diag(ΣMWhite).^.5 ≈ diag(ΣMWhiteSlow).^.5)
+    runslow && @info "passed MWhite test"
 
     #get the white SEs
     ΣWhite::Matrix{Float64} = similar(ΣHomosked)
@@ -318,6 +338,8 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     #print the coefficients
     println("\nWhite Errors: ",diag(ΣWhite).^.5)
     runslow && println("Check: ", diag(ΣWhiteSlow).^.5)
+    runslow && (@assert diag(ΣWhite).^.5 ≈ diag(ΣWhiteSlow).^.5)
+    runslow && @info "passed white error test"
 
     #get the modified white SEs
     Σclustered::Matrix{Float64} = similar(ΣHomosked)
@@ -325,12 +347,15 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     ΣclusteredChk =Finometrics.clusteredΣ!(linwithin, Σclustered) #might need a better check here
     println("\nClustered Errors: ",diag(Σclustered).^.5)
     println("Check: ", diag(ΣclusteredChk ).^.5)
+    @assert diag(Σclustered).^.5 ≈ diag(ΣclusteredChk ).^.5
+    @info "passed cluster error test"
 
     linalt2 = Finometrics.FMLM(df, xspecwithin, :Y, M, V, withinsym=:G,
       clustersyms=[:C1,:C2], qrtype=qrtype, checkwithin=testprimarywithin, containsmissings=false)
     Σwithinclustered::M = M(undef, linalt2.K, linalt2.K)
     Finometrics.clusteredΣ!(linalt2, Σwithinclustered, clusters = [linalt2.clusters[1]], testequivelance=true)
     Finometrics.clusteredΣ!(linalt2, Σwithinclustered, testequivelance=true)
+    @info "passsed cluster method equivelance test"
 
 
     #get the nw SEs
@@ -341,6 +366,8 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     #print the coefficients
     println("\nNW Errors: ",diag(ΣNW).^.5)
     runslow && println("Check: ", diag(ΣNWSlow).^.5)
+    runslow && @assert diag(ΣNW).^.5 ≈ diag(ΣNWSlow).^.5
+    runslow && @info "passed newey west test"
 
     #get the nw SEs
     ΣNWpanel::Matrix{Float64} = similar(ΣHomosked)
@@ -350,11 +377,15 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     #print the coefficients
     println("\nNW panel Errors: ",diag(ΣNWpanel).^.5)
     runslow && println("Check: ", diag(ΣNWpanelslow).^.5)
+    runslow && diag(ΣNWpanel).^.5 ≈ diag(ΣNWpanelslow).^.5
+    runslow && @info "passed newey west panel test"
 
     SST::Float64 = sum((lin.Y .- mean(lin.Y)).^2)
     SSE::Float64 = sum(lin.ε.^2)
 
     println("\nR²: $(Finometrics.R²(lin)) R²-derived: $(1 - SSE/SST)")
+    @assert Finometrics.R²(lin) ≈ 1 - SSE/SST
+    @info "passed R² test"
 
     #test the project routines
     Pa::V = V(undef, N)
@@ -367,7 +398,10 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
       Finometrics.project!(X,PM)
       runslow && Finometrics.projectslow!(X, PS)
       println("P (from full matrix): ", PM[1:3,1:3])
+      @assert diag(PM) ≈ Pa
       runslow && println("P Slow: ", diag(PS)[1:10])
+      runslow && @assert diag(PS) ≈ Pa
+      @info "projection tests passed"
     end
   end
 end
