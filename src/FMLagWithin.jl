@@ -134,9 +134,24 @@ function eliminatestaledates(lagged::AbstractVector{T}, date::AbstractVector{D},
   maxnotstale::Any=error("maxnotstale is required"),
   ) where {T<:Any, D<:Any}
 
-  missingindicies::Vector{Bool} = ((ld, d)->
-    ismissing(ld) || ismissing(d) || d - maxnotstale > ld).(laggeddate, date)
+  local missingindicies::Vector{Bool}
+
+  if all((laggeddate .≤ date) .| (laggeddate .=== missing))
+    missingindicies = ((ld, d)->
+      ismissing(ld) || ismissing(d) || d - maxnotstale > ld).(laggeddate, date)
+  #  println(DataFrame(laggeddate=laggeddate, date=date)[1:50,:])
+  # with reversed dates, we are effectually computing a lead instead of a lag
+  elseif all((laggeddate .≥ date) .| (laggeddate .=== missing))
+    missingindicies = ((nd, d)->
+      ismissing(nd) || ismissing(d) || nd - maxnotstale > d).(laggeddate, date)
+    #@assert sum(missingindicies) ≠ length(lagged)
+  else
+    @assert false #something is wrong (df not sorted properly?)
+  end
+
   lagged[missingindicies] .= missing
+
+  #@assert !(all(missing .=== lagged))
 
   return lagged
 end
@@ -153,9 +168,7 @@ function lagwithin2sorted(
 
 
   local lagged = lagwithin2sorted(vals, group, laggedgroup, eltype(vals), eltype(group))
-  lagged = eliminatestaledates(lagged, date, eltype(lagged), eltype(date),
-    laggeddate=laggeddate, maxnotstale=maxnotstale)
-
+  lagged = eliminatestaledates(lagged, date, eltype(lagged), eltype(date); laggeddate, maxnotstale)
   return lagged
 end
 
@@ -182,9 +195,9 @@ function lagwithin2sorted!(df::DataFrame, vals::Vector{<:DField}, group::DField;
       )).(vals))
   else
     laggeddate = [missing; df[!,date][1:(end-1)]]
+    laggeddate[laggedgroup .!== df[!,group]] .= missing
     tasks = @sync((s::DField -> Threads.@spawn lagwithin2sorted(
-      df[!, s], df[!, group], df[!,date],
-      laggedgroup=laggedgroup, laggeddate = laggeddate, maxnotstale = maxnotstale)).(vals))
+      df[!, s], df[!, group], df[!,date]; laggedgroup, laggeddate, maxnotstale)).(vals))
   end
 
 
@@ -203,7 +216,7 @@ function lagwithin2!(df::DataFrame, vals::Vector{<:DField}, group::DField;
 
   issorted(df, [group, date]) || error("df must be sorted by $group, $date")
 
-  return lagwithin2sorted!(df, vals, group, date=date, maxnotstale=maxnotstale, laggedvals=laggedvals)
+  return lagwithin2sorted!(df, vals, group; date, maxnotstale, laggedvals)
 end
 
 function differencewithin2!(df::DataFrame,
@@ -218,11 +231,38 @@ function differencewithin2!(df::DataFrame,
     (s::DField->Symbol(:L, s, :_temp)).(vals) : (s->Symbol(:L, s)).(vals))
   )::Nothing
 
-  createlag && lagwithin2!(df, vals, group, date=date,
-    laggedvals=laggedvals, maxnotstale=maxnotstale)
+  createlag && lagwithin2!(df, vals, group; date, laggedvals, maxnotstale)
+  #println(df[1:50,:])
   for t ∈ 1:length(vals)
     df[!, differencedvals[t]] = df[!, vals[t]] .- df[!, laggedvals[t]]
-    deletelag && select!(df, Not(laggedvals[t]))
+  end
+  deletelag && select!(df, Not(laggedvals))
+
+  return nothing
+end
+
+
+
+function leadwithin2!(df::DataFrame, vals::Vector{<:DField}, group::DField;
+  date::DField = error("date field is now required"),
+  maxnotstale::Any = nothing,
+  leadvals::Vector{<:DField} = (s->Symbol(:N, s)).(vals))
+
+  issorted(df, [group, date]) || error("df must be sorted by $group, $date")
+
+
+  #we reverse the target fields without copying
+  inputfields = [date; vals; group;]
+  Nrows::Int = size(df,1)
+  revdf = (f->f=>view(df[!,f], Nrows:-1:1)).(inputfields) |> DataFrame!
+  #revdf = (f->f=>df[Nrows:-1:1,f]).(inputfields) |> DataFrame! (similar but copies columns)
+
+
+  #now "lag" the reversed df (which is effectivelly a lead)
+  lagwithin2sorted!(revdf, vals, group, date=date, maxnotstale=maxnotstale, laggedvals=leadvals)
+  revrevdf = revdf[Nrows:-1:1,Not(inputfields)]
+  for f ∈ propertynames(revrevdf)
+    df[!, f] = revrevdf[!, f]
   end
 
   return nothing

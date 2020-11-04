@@ -4,7 +4,8 @@
 
 include("Finometrics.jl")
 using Distributions, LinearAlgebra, CUDA, DataFrames,
- Dates, DataFrames, GLM
+ Dates, DataFrames, GLM, Random
+Random.seed!(11)
 import Base: +, -, ==, >, <, ≥, ≤, length, isless, isequal
 import StatsModels: implicit_intercept
 
@@ -420,17 +421,17 @@ function testlagwithin2(N=100_000)
     val1 = Vector{Union{Float64, Missing}}(undef, N),
     val2 = Vector{Union{Float64, Missing}}(undef, N),
     group = rand(collect(1:1000),N),
-    date = rand(collect(Date(1985,11,11):Day(1):Date(2011,11,11))))
+    date = rand(collect(Date(1985,11,11):Day(1):Date(2011,11,11)), N))
 
   for i ∈ 1:N, s ∈ [:val1, :val2]
-    if rand() < 0.95
-      df[i, s] = missing
-    else
+    if rand() < 0.99
       df[i, s] = rand()
+    else
+      df[i, s] = missing
     end
   end
 
-  maxnotstale = Day(1000)
+  maxnotstale = Day(100)
 
   #execute! (will also sort)
   try
@@ -440,13 +441,31 @@ function testlagwithin2(N=100_000)
     typeof(err) <: AssertionError && error("lagwithin2 should have failed due to lack of sorting")
     sort!(df, [:group, :date])
   end
-  Finometrics.lagwithin2!(df, [:val1, :val2],  :group, date=:date) #minimalist version, sorted
+  dfnostale = deepcopy(df)
+
+  Finometrics.lagwithin2!(dfnostale, [:val1, :val2],  :group, date=:date) #minimalist version, sorted
+  Finometrics.leadwithin2!(dfnostale, [:val1, :val2],  :group, date=:date) #minimalist version, sorted
   Finometrics.lagwithin2!(df, [:val1, :val2],
     :group, date=:date, maxnotstale = maxnotstale)
+  Finometrics.leadwithin2!(df, [:val1, :val2],
+    :group, date=:date, maxnotstale = maxnotstale)
+
+  @assert sum(ismissing.(dfnostale.Lval1)) < sum(ismissing.(df.Lval1))
+  @assert sum(ismissing.(dfnostale.Lval2)) < sum(ismissing.(df.Lval2))
+  @assert sum(ismissing.(dfnostale.Nval1)) < sum(ismissing.(df.Nval1))
+  @assert sum(ismissing.(dfnostale.Nval2)) < sum(ismissing.(df.Nval2))
+
+  #Finometrics.leadwithin2!(df, [:val1, :val2],  :group, date=:date) #minimalist version, sorted
+  #Finometrics.lagwithin2!(df, [:val1, :val2],  :group, date=:date) #minimalist version, sorted
 
   #test the no dataframe version
   df.vecLval1 = Finometrics.lagwithin2sorted(df.val1,df.group)
+  @assert all(dfnostale.Lval1 .=== df.vecLval1)
+
   Finometrics.differencewithin2!(df, [:val1, :val2],
+    :group, date=:date, maxnotstale = maxnotstale)
+
+  Finometrics.leadwithin2!(df, [:val1, :val2],
     :group, date=:date, maxnotstale = maxnotstale)
 
   df.TLval1 = similar(df.Lval1)
@@ -461,7 +480,38 @@ function testlagwithin2(N=100_000)
     end
   end
 
-  inequalities::Int = 0
+  #compute the period
+  df.deltatlag = ((d,Ld)->((d===missing) | (Ld === missing) ? missing : d-Ld)
+    ).(df.date, [missing; df.date[1:(end-1)]])
+  df.Lgroup = [missing; df.group[1:(end-1)]]
+  df.deltatlag[df.Lgroup .!== df.group] .= missing
+  df.idx = 1:N |> collect
+
+  #println(df[(df.Lval1 .!== df.TLval1), :])
+  @assert all(df.Lval1 .=== df.TLval1 )
+  #println(df[(df.val1 .- df.TLval1) .!== df.Dval1, :])
+  @assert all((df.val1 .- df.TLval1) .=== df.Dval1)
+
+  @assert all(df.Lval2 .=== df.TLval2 )
+  @assert all((df.val2 .- df.TLval2) .=== df.Dval2)
+
+  df.TNval1 = similar(df.Nval1)
+  df.TNval2 = similar(df.Nval2)
+  #make the test lags
+  for sdf ∈ groupby(df, :group)
+    for j ∈ 1:(size(sdf,1)-1)
+      if sdf[j,:date] ≥ sdf[j+1,:date] - maxnotstale
+        sdf[j,:TNval1] = sdf[j+1,:val1]
+        sdf[j,:TNval2] = sdf[j+1,:val2]
+      end
+    end
+  end
+
+  @assert all(df.Nval1 .=== df.TNval1 )
+  @assert all(df.Nval2 .=== df.TNval2 )
+
+  #=inequalities::Int = 0
+
   for r ∈ eachrow(df)
     if ismissing(r.Lval1)
       inequalities += (!ismissing(r.TLval1))
@@ -472,9 +522,11 @@ function testlagwithin2(N=100_000)
       if !ismissing(r.val1)
         inequalities += (!(r.val1-r.TLval1 == r.Dval1))
       end
-    end
+    @assert inequalities == 0
+  end=#
 
-    if ismissing(r.Lval2)
+
+  #=if ismissing(r.Lval2)
       inequalities += (!ismissing(r.TLval2))
     else
       inequalities += (!(r.Lval2==r.TLval2))
@@ -485,6 +537,9 @@ function testlagwithin2(N=100_000)
   end
 
   @assert inequalities == 0
+  =#
+
+
 
 end
 
@@ -525,5 +580,6 @@ function runbasictests()
   testlagwithin2()
   testwinsorizequantile()
 end
+
 
 #runbasictests()
