@@ -468,6 +468,13 @@ function testlagwithin2(N=100_000)
   Finometrics.leadwithin2!(df, [:val1, :val2],
     :group, date=:date, maxnotstale = maxnotstale)
 
+  Finometrics.lagwithin2!(df, [:Nval1, :Nval2],
+    :group, date=:date, maxnotstale = maxnotstale)
+
+  Finometrics.leadwithin2!(df, [:Lval1, :Lval2],
+    :group, date=:date, maxnotstale = maxnotstale)
+  @assert (sum(df.LNval1 .=== df.val1) > 0) && (sum(df.LNval2 .=== df.val2) > 0)
+
   df.TLval1 = similar(df.Lval1)
   df.TLval2 = similar(df.Lval2)
   #make the test lags
@@ -481,12 +488,17 @@ function testlagwithin2(N=100_000)
   end
 
   #compute the period
-  df.deltatlag = ((d,Ld)->((d===missing) | (Ld === missing) ? missing : d-Ld)
-    ).(df.date, [missing; df.date[1:(end-1)]])
-  df.Lgroup = [missing; df.group[1:(end-1)]]
-  df.deltatlag[df.Lgroup .!== df.group] .= missing
   df.idx = 1:N |> collect
 
+  df.daysfromlag = ((d,Ld)->((d===missing) | (Ld === missing) ? missing : d-Ld)
+    ).(df.date, [missing; df.date[1:(end-1)]])
+  df.Lgroup = [missing; df.group[1:(end-1)]]
+  df.daysfromlag[df.Lgroup .!== df.group] .= missing
+
+  df.daystolead = ((d,Nd)->((d===missing) | (Nd === missing) ? missing : Nd-d)
+    ).(df.date, [df.date[2:end]; missing])
+  df.Ngroup = [df.group[2:end]; missing]
+  df.daystolead[df.Ngroup .!== df.group] .= missing
   #println(df[(df.Lval1 .!== df.TLval1), :])
   @assert all(df.Lval1 .=== df.TLval1 )
   #println(df[(df.val1 .- df.TLval1) .!== df.Dval1, :])
@@ -510,36 +522,27 @@ function testlagwithin2(N=100_000)
   @assert all(df.Nval1 .=== df.TNval1 )
   @assert all(df.Nval2 .=== df.TNval2 )
 
-  #=inequalities::Int = 0
+  ####NOTE- commentary
+  #this basically says that leading and then lagging the value produces the original value
+  #that is, either val = LNval or a missing value is resulting from one of two places:
+  #1) the original val is missing 2) its an endpoint, so the Lval1 is missing
+  #(we don't need to worry about the Nval missing since the NL value at t draws from the
+  #N value at t-1 which draws from the t value- but this notably implies NLVal1=Val1=missing so
+  #we don't need an extra case)
+  # the NLval=val is handled analagously, where the original value is missing or its
+  #an end point so the Nval1 is missing. We don't need to worry about the Lval missing since the NL
+  #value draws from the N value of L which draws from the val, which would imply LNVal1=Val1=missing
 
-  for r ∈ eachrow(df)
-    if ismissing(r.Lval1)
-      inequalities += (!ismissing(r.TLval1))
-      inequalities += (!ismissing(r.vecLval1))
-    else
-      inequalities += (!(r.Lval1==r.TLval1))
-      inequalities += (!(r.vecLval1==r.TLval1))
-      if !ismissing(r.val1)
-        inequalities += (!(r.val1-r.TLval1 == r.Dval1))
-      end
-    @assert inequalities == 0
-  end=#
+  #println(df[1:200,[:idx, :date, :group, :val1, :Lval1, :Nval1, :LNval1, :daysfromlag, :daystolead]])
+  @assert all(((df.LNval1 .=== missing) .& (df.Lval1 .=== missing))
+   .| (df.LNval1 .=== df.val1))
+   @assert all(((df.LNval2 .=== missing) .& (df.Lval2 .=== missing))
+    .| (df.LNval2 .=== df.val2))
 
-
-  #=if ismissing(r.Lval2)
-      inequalities += (!ismissing(r.TLval2))
-    else
-      inequalities += (!(r.Lval2==r.TLval2))
-      if !ismissing(r.val2)
-        inequalities += (!(r.val2-r.TLval2 == r.Dval2))
-      end
-    end
-  end
-
-  @assert inequalities == 0
-  =#
-
-
+  @assert all(((df.NLval1 .=== missing) .& (df.Nval1 .=== missing))
+   .| (df.NLval1 .=== df.val1))
+   @assert all(((df.NLval2 .=== missing) .& (df.Nval2 .=== missing))
+    .| (df.NLval2 .=== df.val2))
 
 end
 
@@ -570,15 +573,15 @@ end
 function runbasictests()
   @info "Some basic tests. Incomplete, but better than nothing until I get around to making something better"
 
-  testMM(100, N=1000, G=10)
+  #=testMM(100, N=1000, G=10)
   @time LMtest(Matrix{Float64}, Vector{Float64},
     N=1_000, testerrors=true, K=5, testprimarywithin=true, runslow=true)#, qrtype=CuMatrix{Float32})
 
   testYearQuarter()
   testYearMonth()
-  testlaganddifference()
+  testlaganddifference()=#
   testlagwithin2()
-  testwinsorizequantile()
+  #testwinsorizequantile()
 end
 
 
