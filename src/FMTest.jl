@@ -443,15 +443,17 @@ function testlagwithin2(N=100_000)
   end
   dfnostale = deepcopy(df)
 
-  Finometrics.lagwithin2!(dfnostale, [:val1, :val2],  :group, date=:date) #minimalist version, sorted
-  Finometrics.leadwithin2!(dfnostale, [:val1, :val2],  :group, date=:date) #minimalist version, sorted
-  Finometrics.lagwithin2!(df, [:val1, :val2],
+  Finometrics.lagwithin2!(dfnostale, [:date, :val1, :val2],  :group, date=:date) #minimalist version, sorted
+  Finometrics.leadwithin2!(dfnostale, [:date, :val1, :val2],  :group, date=:date) #minimalist version, sorted
+  Finometrics.lagwithin2!(df, [:date, :val1, :val2],
     :group, date=:date, maxnotstale = maxnotstale)
-  Finometrics.leadwithin2!(df, [:val1, :val2],
+  Finometrics.leadwithin2!(df, [:date, :val1, :val2],
     :group, date=:date, maxnotstale = maxnotstale)
 
+  @assert sum(ismissing.(dfnostale.Ldate)) < sum(ismissing.(df.Ldate))
   @assert sum(ismissing.(dfnostale.Lval1)) < sum(ismissing.(df.Lval1))
   @assert sum(ismissing.(dfnostale.Lval2)) < sum(ismissing.(df.Lval2))
+  @assert sum(ismissing.(dfnostale.Ndate)) < sum(ismissing.(df.Ndate))
   @assert sum(ismissing.(dfnostale.Nval1)) < sum(ismissing.(df.Nval1))
   @assert sum(ismissing.(dfnostale.Nval2)) < sum(ismissing.(df.Nval2))
 
@@ -465,22 +467,24 @@ function testlagwithin2(N=100_000)
   Finometrics.differencewithin2!(df, [:val1, :val2],
     :group, date=:date, maxnotstale = maxnotstale)
 
-  Finometrics.leadwithin2!(df, [:val1, :val2],
+  Finometrics.leadwithin2!(df, [:date, :val1, :val2],
     :group, date=:date, maxnotstale = maxnotstale)
 
-  Finometrics.lagwithin2!(df, [:Nval1, :Nval2],
+  Finometrics.lagwithin2!(df, [:Ndate, :Nval1, :Nval2],
     :group, date=:date, maxnotstale = maxnotstale)
 
-  Finometrics.leadwithin2!(df, [:Lval1, :Lval2],
+  Finometrics.leadwithin2!(df, [:Ldate, :Lval1, :Lval2],
     :group, date=:date, maxnotstale = maxnotstale)
   @assert (sum(df.LNval1 .=== df.val1) > 0) && (sum(df.LNval2 .=== df.val2) > 0)
 
+  df.TLdate = similar(df.Ldate)
   df.TLval1 = similar(df.Lval1)
   df.TLval2 = similar(df.Lval2)
   #make the test lags
   for sdf ∈ groupby(df, :group)
     for j ∈ 2:size(sdf,1)
       if sdf[j-1,:date] ≥ sdf[j,:date] - maxnotstale
+        sdf[j,:TLdate] = sdf[j-1,:date]
         sdf[j,:TLval1] = sdf[j-1,:val1]
         sdf[j,:TLval2] = sdf[j-1,:val2]
       end
@@ -499,30 +503,34 @@ function testlagwithin2(N=100_000)
     ).(df.date, [df.date[2:end]; missing])
   df.Ngroup = [df.group[2:end]; missing]
   df.daystolead[df.Ngroup .!== df.group] .= missing
-  #println(df[(df.Lval1 .!== df.TLval1), :])
+
+  @assert all(df.Ldate .=== df.TLdate )
+
   @assert all(df.Lval1 .=== df.TLval1 )
-  #println(df[(df.val1 .- df.TLval1) .!== df.Dval1, :])
   @assert all((df.val1 .- df.TLval1) .=== df.Dval1)
 
   @assert all(df.Lval2 .=== df.TLval2 )
   @assert all((df.val2 .- df.TLval2) .=== df.Dval2)
 
+  df.TNdate = similar(df.Ndate)
   df.TNval1 = similar(df.Nval1)
   df.TNval2 = similar(df.Nval2)
   #make the test lags
   for sdf ∈ groupby(df, :group)
     for j ∈ 1:(size(sdf,1)-1)
       if sdf[j,:date] ≥ sdf[j+1,:date] - maxnotstale
+        sdf[j,:TNdate] = sdf[j+1,:date]
         sdf[j,:TNval1] = sdf[j+1,:val1]
         sdf[j,:TNval2] = sdf[j+1,:val2]
       end
     end
   end
 
+  @assert all(df.Ndate .=== df.TNdate )
   @assert all(df.Nval1 .=== df.TNval1 )
   @assert all(df.Nval2 .=== df.TNval2 )
 
-  ####NOTE- commentary
+  ####NOTE- commentary for testing if leading a lag is equivent to the original
   #this basically says that leading and then lagging the value produces the original value
   #that is, either val = LNval or a missing value is resulting from one of two places:
   #1) the original val is missing 2) its an endpoint, so the Lval1 is missing
@@ -534,11 +542,15 @@ function testlagwithin2(N=100_000)
   #value draws from the N value of L which draws from the val, which would imply LNVal1=Val1=missing
 
   #println(df[1:200,[:idx, :date, :group, :val1, :Lval1, :Nval1, :LNval1, :daysfromlag, :daystolead]])
+  @assert all(((df.LNdate .=== missing) .& (df.Ldate .=== missing))
+   .| (df.LNdate .=== df.date))
   @assert all(((df.LNval1 .=== missing) .& (df.Lval1 .=== missing))
    .| (df.LNval1 .=== df.val1))
    @assert all(((df.LNval2 .=== missing) .& (df.Lval2 .=== missing))
     .| (df.LNval2 .=== df.val2))
 
+  @assert all(((df.NLdate .=== missing) .& (df.Ndate .=== missing))
+   .| (df.NLdate .=== df.date))
   @assert all(((df.NLval1 .=== missing) .& (df.Nval1 .=== missing))
    .| (df.NLval1 .=== df.val1))
    @assert all(((df.NLval2 .=== missing) .& (df.Nval2 .=== missing))

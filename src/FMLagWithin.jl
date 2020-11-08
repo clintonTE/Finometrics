@@ -231,6 +231,8 @@ function differencewithin2!(df::DataFrame,
     (s::DField->Symbol(:L, s, :_temp)).(vals) : (s->Symbol(:L, s)).(vals))
   )::Nothing
 
+  (date ∈ vals) && error("date field cannot be differenced. workaround- create a copy")
+
   createlag && lagwithin2!(df, vals, group; date, laggedvals, maxnotstale)
   #println(df[1:50,:])
   for t ∈ 1:length(vals)
@@ -252,7 +254,7 @@ function leadwithin2!(df::DataFrame, vals::Vector{<:DField}, group::DField;
 
 
   #we reverse the target fields without copying
-  inputfields = [date; vals; group;]
+  inputfields = [date; vals; group;] |> unique!
   Nrows::Int = size(df,1)
   revdf = (f->f=>view(df[!,f], Nrows:-1:1)).(inputfields) |> DataFrame!
   #revdf = (f->f=>df[Nrows:-1:1,f]).(inputfields) |> DataFrame! (similar but copies columns)
