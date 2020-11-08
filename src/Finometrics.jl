@@ -110,6 +110,7 @@ export FMLM, #Regression methods
   lagwithin2!,
   lagwithin2sorted!,
   lagwithin2sorted,
+  leadwithin2!,
 
   FMΦInv, #FMNumerical
   FMΦ,
