@@ -17,7 +17,7 @@ end=#
 ##################Dependencies
 
 using  DataFrames, Distributions, StatsBase, GLM,
-  Dates, NLopt, LinearAlgebra, StatsModels, Formatting
+  Dates, NLopt, LinearAlgebra, StatsModels, Formatting, CUDA
 
 try
   using CUDA
