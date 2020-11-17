@@ -16,7 +16,7 @@ end=#
 
 ##################Dependencies
 
-using  DataFrames, Distributions, StatsBase, GLM,
+using  DataFrames, Distributions, StatsBase, GLM, CategoricalArrays,
   Dates, NLopt, LinearAlgebra, StatsModels, Formatting
 
 try
