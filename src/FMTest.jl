@@ -585,15 +585,15 @@ end
 function runbasictests()
   @info "Some basic tests. Incomplete, but better than nothing until I get around to making something better"
 
-  #=testMM(100, N=1000, G=10)
+  testMM(100, N=1000, G=10)
   @time LMtest(Matrix{Float64}, Vector{Float64},
-    N=1_000, testerrors=true, K=5, testprimarywithin=true, runslow=true)#, qrtype=CuMatrix{Float32})
+    N=2_000, testerrors=true, K=5, testprimarywithin=true, runslow=true)#, qrtype=CuMatrix{Float32})
 
   testYearQuarter()
   testYearMonth()
-  testlaganddifference()=#
+  testlaganddifference()
   testlagwithin2()
-  #testwinsorizequantile()
+  testwinsorizequantile()
 end
 
 
