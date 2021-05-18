@@ -438,7 +438,7 @@ function neweywestpanelΣslow!(X::M, xqr::FMQR{M}, ε::V, clusters::FMClusters,
 
   #this method requires a sorted array
   #will do this via dataframes
-  df::DataFrame = DataFrame(deepcopy(X))
+  df::DataFrame = DataFrame(deepcopy(X), :auto)
   xnames = names(df)
   df.clusters = deepcopy(clusters[1])
   df.ε = deepcopy(ε)

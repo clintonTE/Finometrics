@@ -17,7 +17,7 @@ end=#
 ##################Dependencies
 
 using  DataFrames, Distributions, StatsBase, GLM, CategoricalArrays,
-  Dates, NLopt, LinearAlgebra, StatsModels, Formatting
+  Dates, LinearAlgebra, StatsModels, Formatting, NLopt
 
 try
   using CUDA
@@ -252,7 +252,7 @@ include("FMVAR.jl")
 include("FMNumerical.jl")
 include("FMSpecs.jl")
 include("FMYearQuarter.jl")
-include("FMTest.jl")
+include("FMTest.jl") #comment this out when testing
 include("FMRegBroken2SLS.jl")
 
 #type is derived from a user-defined type
