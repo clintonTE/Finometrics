@@ -256,7 +256,7 @@ function leadwithin2!(df::DataFrame, vals::Vector{<:DField}, group::DField;
   #we reverse the target fields without copying
   inputfields = [date; vals; group;] |> unique!
   Nrows::Int = size(df,1)
-  revdf = (f->f=>view(df[!,f], Nrows:-1:1)).(inputfields) |> DataFrame!
+  revdf = (f->f=>view(df[!,f], Nrows:-1:1)).(inputfields) |> (flds)->DataFrame(flds, copycols=false)
   #revdf = (f->f=>df[Nrows:-1:1,f]).(inputfields) |> DataFrame! (similar but copies columns)
 
 
