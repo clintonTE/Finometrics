@@ -433,9 +433,9 @@ end
 
 
 #fucntion for getting regression coefficients
-getTerm(args...; keyargs...) = error("use term instead")
-term(lm::FMLM, s::String) = (lm.β[findfirst(lm.Xnames, s)])::Float64
-term(lm::FMLM, s::Symbol) = term(lm, string(s))
+getTerm(args...; keyargs...) = error("use βterm instead")
+βterm(lm::FMLM, s::String) = (lm.β[findfirst(lm.Xnames, s)])::Float64
+βterm(lm::FMLM, s::Symbol) = βterm(lm, string(s))
 
 
 #########################Project!##############################

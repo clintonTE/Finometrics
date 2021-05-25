@@ -69,7 +69,7 @@ export FMLM, #Regression methods
   FMExpr,
   FMSym,
   FMQR,
-  term,
+  βterm, #odd naming is due to conflicts with other packages
   R,
   R²,
   neweywestΣfunc,
