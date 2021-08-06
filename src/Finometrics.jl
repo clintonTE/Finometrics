@@ -42,7 +42,8 @@ import Base: push!, length, iterate, broadcastable
 
 #######################MACROS###################
 #useful macro for conditionally running things in parallel
-macro mpar(cond, expr)
+#BROKEN
+#=macro mpar(cond, expr)
   quote
     if $(esc(cond))
         :($(Threads.@threads($expr)))
@@ -50,7 +51,7 @@ macro mpar(cond, expr)
         :($($expr))
     end
   end
-end
+end=#
 
 
 ######################Methods####################

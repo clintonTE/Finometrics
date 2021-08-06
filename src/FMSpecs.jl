@@ -71,13 +71,23 @@ function computeFMLMresults!(dfs::S,
   results::Vector{T} = Vector{T}(undef, specs.N[])
   #runs the regressions
   #could conceivably parallelize this at some point
-  @mpar parallel for i::Int ∈ 1:specs.N[]
-    m::FMLM = FMLM(dfs[i], specs.xspecs[i],  specs.yspecs[i], M, V,
-      withinsym = specs.withinspecs[i], clustersyms = specs.clusterspecs[i],
-      Xnames=specs.xnames[i], Yname = "$(specs.yspecs[i])",
-      containsmissings=containsmissings, qrtype=qrtype)
-    results[i] = specs.aggfunc(m)
-  end
+  if parallel
+    Threads.@threads for i::Int ∈ 1:specs.N[]
+      m::FMLM = FMLM(dfs[i], specs.xspecs[i],  specs.yspecs[i], M, V,
+        withinsym = specs.withinspecs[i], clustersyms = specs.clusterspecs[i],
+        Xnames=specs.xnames[i], Yname = "$(specs.yspecs[i])",
+        containsmissings=containsmissings, qrtype=qrtype)
+      results[i] = specs.aggfunc(m)
+    end
+    else
+      for i::Int ∈ 1:specs.N[]
+        m::FMLM = FMLM(dfs[i], specs.xspecs[i],  specs.yspecs[i], M, V,
+          withinsym = specs.withinspecs[i], clustersyms = specs.clusterspecs[i],
+          Xnames=specs.xnames[i], Yname = "$(specs.yspecs[i])",
+          containsmissings=containsmissings, qrtype=qrtype)
+        results[i] = specs.aggfunc(m)
+      end
+    end
 
   (r::T->push!(specs.results, r)).(results)
 
