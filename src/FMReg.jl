@@ -14,9 +14,11 @@ function generateX(::Type{M}, df::T, f::FormulaTerm)::M where
 
   #f = apply_schema(f, schema(f,df), StatisticalModel)
   #m = modelcols(f.rhs, df)
-  (M<:CuArray) && CUDA.allowscalar(true)
+
+  #below there was some CUDA code- not sure if it is needed, but not working with CUDA now in any case
+  #(M<:CuArray) && CUDA.allowscalar(true)
   m::M = ModelMatrix(ModelFrame(f, df)).m
-  (M<:CuArray) && CUDA.allowscalar(false)
+  #(M<:CuArray) && CUDA.allowscalar(false)
 
   return m
 end
@@ -71,9 +73,10 @@ function cloakmissings(::Type{M}, df::T, syms::Vector{Symbol})::SubDataFrame whe
     T<:AbstractDataFrame, M<:AbstractMatrix}
   local sdf::SubDataFrame
 
-  (M <: CuArray) && CUDA.allowscalar(true) #WARNING- this is expensive!
+  #CUDA code disabled- might need to reneable it at some point
+  #(M <: CuArray) && CUDA.allowscalar(true) #WARNING- this is expensive!
   sdf = view(df,completecases(df[!,syms]),:)
-  (M <: CuArray) && CUDA.allowscalar(false)
+  #(M <: CuArray) && CUDA.allowscalar(false)
 
   return sdf
 end
@@ -119,10 +122,16 @@ function FMQR(::Type{T}, X::M)::FMQR where {T<:AbstractMatrix, M<:AbstractMatrix
   R = QRcompact.R
 
   #hack to get around a bug involving scalar operations when pulling the Q matrix
-  Q = T<:CuArray ? CuMatrix(QRcompact.Q) : QRcompact.Q
+  #hack disabled
+  #Q = T<:CuArray ? CuMatrix(QRcompact.Q) : QRcompact.Q
+  Q = QRcompact.Q
+  
 
   try
-    Rinv = T<:CuArray ? pinv(Matrix(R)) : pinv(R)
+    #hack below disabled
+    #Rinv = T<:CuArray ? pinv(Matrix(R)) : pinv(R)
+    Rinv = pinv(R)
+
   catch
     println("X matrix:")
     display(X)

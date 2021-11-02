@@ -3,7 +3,7 @@
 #=using Revise
 
 include("Finometrics.jl")
-using Distributions, LinearAlgebra, CUDA, DataFrames,
+using Distributions, LinearAlgebra, #=CUDA, =#DataFrames,
  Dates, DataFrames, GLM, Random
 Random.seed!(11)
 import Base: +, -, ==, >, <, ≥, ≤, length, isless, isequal
@@ -580,6 +580,8 @@ function testwinsorizequantile(i=100_000; tol = 10^-8)
   println("autotest: winsorizequantile(v, .8, twotailed=true)")
   wv2 = completev(Finometrics.winsorizequantile(v, .2, twosided=true))
   (sum((abs).(wv2 .- wv) .> tol) > 0) && error("symmetric two-tailed winsorization test failed")
+
+  return nothing
 end
 
 function runbasictests()

@@ -241,14 +241,15 @@ getModWhiteΣSlow(args...; keyargs...) = error("Use modifiedwhiteΣslowinstead")
 function modifiedwhiteΣslow(X::M, ε::V, dofcorrect::Float64) where {M<:AbstractMatrix, V<:AbstractVector}
 
   #do this since we only care about clarity (and not performance)
-  (M<:CuArray) && CuArrays.allowscalar(true)
+  #cu hack diabled
+  #(M<:CuArray) && CuArrays.allowscalar(true)
 
   XXinv::M = Matrix(X' * X)\I
 
   P::M = X * (XXinv) * X'
   Σ::M = XXinv * X' * diagm(ε  ./ (1.0 .- diag(P))) .^ 2.0 * X * XXinv
 
-  (M<:CuArray) && CuArrays.allowscalar(false)
+  #(M<:CuArray) && CuArrays.allowscalar(false)
 
 
   return Σ .* dofcorrect
@@ -319,7 +320,8 @@ modifiedwhiteΣslow(lin::FMLM, dofcorrect::Float64 = lin.N/lin.dof) = modifiedwh
       )  where {M<:AbstractMatrix, V<:AbstractVector}
 
     N::Int, K::Int = size(X)
-    (M<:CuArray) && CuArrays.allowscalar(true) #don't care about performance here
+    #cu hack diabled
+    #(M<:CuArray) && CuArrays.allowscalar(true) #don't care about performance here
 
     #first form the spectral matrix
 
@@ -343,7 +345,7 @@ modifiedwhiteΣslow(lin::FMLM, dofcorrect::Float64 = lin.N/lin.dof) = modifiedwh
     XXinv::Matrix = Matrix(X' * X) \ I
 
     ret::M = N*XXinv*ST* XXinv
-    (M<:CuArray) && CuArrays.allowscalar(false) #don't care about performance here
+    #(M<:CuArray) && CuArrays.allowscalar(false) #don't care about performance here
     return ret * dofcorrect
   end
 
