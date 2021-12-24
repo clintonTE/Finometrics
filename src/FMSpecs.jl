@@ -71,7 +71,7 @@ function computeFMLMresults!(dfs::S,
   results::Vector{T} = Vector{T}(undef, specs.N[])
   #runs the regressions
   #could conceivably parallelize this at some point
-  if parallel
+  if parallel #is there a problem here? if so I don't know what it is, but I have had some crashes
     Threads.@threads for i::Int ∈ 1:specs.N[]
       m::FMLM = FMLM(dfs[i], specs.xspecs[i],  specs.yspecs[i], M, V,
         withinsym = specs.withinspecs[i], clustersyms = specs.clusterspecs[i],

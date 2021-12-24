@@ -1,8 +1,8 @@
 #NOTE: Uncomment below bloc for stand alone testing
 #WARNING WARNING WARNING don't for get to comment include("test.jl") in Finometics.jl
-#=using Revise
+using Revise
 
-include("Finometrics.jl")
+#=include("Finometrics.jl")
 using Distributions, LinearAlgebra, #=CUDA, =#DataFrames,
  Dates, DataFrames, GLM, Random
 Random.seed!(11)
