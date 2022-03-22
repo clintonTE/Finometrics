@@ -137,6 +137,7 @@ export FMLM, #Regression methods
   NDate,
 
   MString,
+  MAString,
   MBool,
   MFloat64,
   MInt,
