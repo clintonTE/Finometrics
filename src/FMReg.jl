@@ -15,10 +15,8 @@ function generateX(::Type{M}, df::T, f::FormulaTerm)::M where
   #f = apply_schema(f, schema(f,df), StatisticalModel)
   #m = modelcols(f.rhs, df)
 
-  #below there was some CUDA code- not sure if it is needed, but not working with CUDA now in any case
-  #(M<:CuArray) && CUDA.allowscalar(true)
+
   m::M = ModelMatrix(ModelFrame(f, df)).m
-  #(M<:CuArray) && CUDA.allowscalar(false)
 
   return m
 end
@@ -32,24 +30,10 @@ function generateX(::Type{M}, df::T, rhs::V)::M where
     return ones(Float64,size(df,1),1)
   end
 
-  #WARNING: This is a HACK! Replace with `nothing` or something else (See StatsModels github)
-  #or just redo the whole thing in the GLM framework
-  #Will be able to replace the LHS w/0 in subsequent versions
-  #lhs_hack::Symbol = propertynames(df)[1]
-  #f::FormulaTerm = @eval(@formula($lhs_hack ~ $rhs))
   f::FormulaTerm = @eval(@formula(0 ~ $rhs))
 
   return generateX(M, df, f)
 end
-
-#helper function to create a one-sided formula given an expression
-#IN: an expression and dataframe
-#OUT: A one-sided formula object
-#WARNING: Broken! if everything works drop this
-#=function get1SidedFormula(RHS::T)::FormulaTerm where
-  {T <: FMExpr}
-  return @eval(@formula(nothing ~ $RHS)) #WARNING: THIS IS A HACK!!!!
-end=#
 
 #helper function  to get the list of symbols in an expression
 #IN: A dataframe and a string object, typically representing a formula
@@ -73,10 +57,7 @@ function cloakmissings(::Type{M}, df::T, syms::Vector{Symbol})::SubDataFrame whe
     T<:AbstractDataFrame, M<:AbstractMatrix}
   local sdf::SubDataFrame
 
-  #CUDA code disabled- might need to reneable it at some point
-  #(M <: CuArray) && CUDA.allowscalar(true) #WARNING- this is expensive!
   sdf = view(df,completecases(df[!,syms]),:)
-  #(M <: CuArray) && CUDA.allowscalar(false)
 
   return sdf
 end

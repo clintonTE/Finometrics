@@ -255,11 +255,11 @@ include a pre-allcoation of the string matrix, a switch for the inclusion of
 stars, a scaling factor, and the number of digits (rounding level)=#
 #OUT: Writes to and returns the content matrix
 function getcontentmatrices!(;
-    βs::Vector{Vector{Float64}} = error("βs is a required argument for getcontentmatrices"),
-    σs::Vector{Vector{Float64}} = error("σs is a required argument for getcontentmatrices"),
-    Xnames::Vector{Vector{String}} = error("Xnames is a required argument for getcontentmatrices"),
-    Ns::Vector{Int} = error("Ns is a required argument for getcontentmatrices"),
-    rows::Vector{String} = error("rows is a required argument for getcontentmatrices"),
+    βs::Vector{Vector{Float64}},
+    σs::Vector{Vector{Float64}},
+    Xnames::Vector{Vector{String}},
+    Ns::Vector{Int},
+    rows::Vector{String},
     stars::Bool=true, #whether to display signficance stars
     starlvls::Vector{Float64} = [.9, .95, .99],  #cutoffs for signficance (must be sorted)
     starstrings::Vector{String} =
