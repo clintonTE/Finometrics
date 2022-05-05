@@ -260,6 +260,7 @@ function getcontentmatrices!(;
     Xnames::Vector{Vector{String}},
     Ns::Vector{Int},
     rows::Vector{String},
+    psasσs::Bool = false,
     stars::Bool=true, #whether to display signficance stars
     starlvls::Vector{Float64} = [.9, .95, .99],  #cutoffs for signficance (must be sorted)
     starstrings::Vector{String} =
@@ -274,29 +275,31 @@ function getcontentmatrices!(;
     for c ∈ 1:length(βs)
 
         #build a dictionary of the names
-        XNameTbl::Dict = Dict(Xnames[c][i] => i for i::Int ∈ 1:length(βs[c]))
+        Xnametable::Dict = Dict(Xnames[c][i] => i for i ∈ 1:length(βs[c]))
 
         for r ∈ 1:length(rows)
-            if haskey(XNameTbl, rows[r]) #need to check if it exists
-                ind::Int = XNameTbl[rows[r]]
-                p::Float64 =
-                    cdf(TDist(Ns[c]), βs[c][ind]/σs[c][ind]) #get CDF from T distribution
-                p = p > .5 ? 1-(1.0 - p)*2.0 : 1.0 - p*2.0 #calc 2-tailed p value
-                sigLevel::Int = sum(p.>starlvls)
-                if sigLevel > 0 && stars
-                    starString::String = starstrings[sum(p.>starlvls)]
-                else
-                    starString = ""
-                end
+            if haskey(nametable, rows[r]) #need to check if it exists
 
-                #scale, round and write the β coefficeint and σ into the string matrices
-                content[1][r,c] =
-                  #"$(round(scaling[r]*βs[c][ind],decimaldigits))^{$starString}"
-                  "\$$(num2str(βs[c][ind], decimaldigits, scalefactor=scaling[r]))\$$starString"
-                content[2][r,c] =
-                  "(\$$(num2str(σs[c][ind], decimaldigits, scalefactor=scaling[r]))\$)"
-                  #"($(round(scaling[r]*σs[c][ind],decimaldigits)))"
-            end
+              if stars
+                ind = xnametable[rows[r]]
+
+                if psasσs
+                  p = σs[c][ind]
+                else
+                  p = cdf(TDist(Ns[c]), βs[c][ind]/σs[c][ind]) #get CDF from T distribution
+                  p = p > .5 ? 1-(1.0 - p)*2.0 : 1.0 - p*2.0 #calc 2-tailed p value
+                end
+                starstring = sum(p.>starlvls) > 0 ?  starstrings[sum(p.>starlvls)] : ""
+              else
+                starstring = ""
+              end
+
+              #scale, round and write the β coefficeint and σ into the string matrices
+              content[1][r,c] =
+                "\$$(num2str(βs[c][ind], decimaldigits, scalefactor=scaling[r]))\$$starstring"
+              content[2][r,c] =
+                "(\$$(num2str(σs[c][ind], decimaldigits, scalefactor=scaling[r]))\$)"
+          end
         end
     end
 
@@ -343,8 +346,8 @@ function iotest()
   widthcolnames::Vector{Vector{Int}} =
       [broadcast(i->(ncols ÷ nsecs), 1:nsecs),broadcast(i->1, 1:ncols)]
 
-  s=textable(colnames,  contentrownames, content, descrownames,
-      desccontent, notes, widthcolnames=widthcolnames)
+  s=textable(;colnames,  contentrownames, content, descrownames,
+      desccontent, notes, widthcolnames)
 
   println(array2string(fill(.45/π,3,3,4),decimaldigits=4))
 
