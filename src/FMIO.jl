@@ -80,7 +80,7 @@ function textable(;
   widthdesccontent::Vector{Vector{Int}} = #contains the number of columns for each entry
     broadcast((i::Int)->ones(Int,length(desccontent[i])),1:length(desccontent)),
   colheadername::Vector{String} = ["" for i ∈ 1:length(colnames)],
-  alignmentstring::String = string(" l", join(["r" for i ∈ 1:length(desccontent[1])])),
+  alignmentstring::String = string(" l", join(["r" for i ∈ 1:maximum(length.(widthcolnames))])),
   rowlabelheader::Bool = false)
 
   #size parameters for content
@@ -312,9 +312,9 @@ end
   OUT: Writes the string to a file=#
 function writetextable(tablestring::String;
   path::String=pwd(),
-  outname::String = "$path\\results$(Dates.format(now(),"yymmdd_THMS")).tex")
+  outname::String = "$path/results$(Dates.format(now(),"yymmdd_THMS")).tex")
 
-  oStream::IOStream = open("$path\\$outname","w+")
+  oStream::IOStream = open("$path/$outname","w+")
   write(oStream, tablestring)
   close(oStream)
 end
@@ -328,7 +328,7 @@ function iotest()
   nrowsDesc = 2
   nsubRows = 2
 
-  path = pwd() * "\\results"
+  path = pwd() * "/results"
   outname = "test.tex"
   footerName = "footer.tex"
   headerName = "header.tex"
