@@ -1,0 +1,7 @@
+.vscode/
+.vscode
+*.pdf
+*.xlsx
+*.lyx~
+*.DS_Store
+.DS_Store
