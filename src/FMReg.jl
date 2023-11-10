@@ -162,7 +162,7 @@ function FMLM(X::M, Y::V; clusters::FMClusters = FMClusters([]),
         Xnames::Vector{String} = string.(:X, 1:size(X,2)),
         Yname::String = "Y", dof = size(X,1)-size(X,2),
         qrtype::Type = M)::FMLM where {
-          M<:AbstractMatrix, V<:AbstractVector, C<:FMData}
+          M<:AbstractMatrix, V<:AbstractVector}
     local xqr::FMQR
 
     xqr = FMQR(qrtype, X)
