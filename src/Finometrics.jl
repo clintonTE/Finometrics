@@ -1,18 +1,6 @@
 module Finometrics
 using Revise
 
-#=if pwd() ∉ LOAD_PATH
-  push!(LOAD_PATH,pwd())
-end=#
-
-#update steps
-#cd [current project path]
-#] activate .
-#] update
-#] resolve
-#] gc
-#] build
-#] precompile
 
 ##################Dependencies
 
