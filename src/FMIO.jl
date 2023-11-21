@@ -275,10 +275,10 @@ function getcontentmatrices!(;
     for c ∈ 1:length(βs)
 
         #build a dictionary of the names
-        Xnametable::Dict = Dict(Xnames[c][i] => i for i ∈ 1:length(βs[c]))
+        xnametable::Dict = Dict(Xnames[c][i] => i for i ∈ 1:length(βs[c]))
 
         for r ∈ 1:length(rows)
-            if haskey(nametable, rows[r]) #need to check if it exists
+            if haskey(xnametable, rows[r]) #need to check if it exists
 
               if stars
                 ind = xnametable[rows[r]]
