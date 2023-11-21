@@ -179,8 +179,8 @@ a scaling factor, the number of digits in values, and customizable
 notes
 OUT: A latex table string
 =#
-function textable(models::Vector{FMLM},
-    getΣ::T where T<:Union{Function, Vector{Function}},
+function textable(models::Vector{<:FMLM},
+    getΣ::Union{Function, Vector{Function}},
     rows::Vector{String};
     colnames::Vector{Vector{String}} = [["($i)" for i ∈ 1:length(models)]],
     contentrownames::Vector{String} = String.(rows),
