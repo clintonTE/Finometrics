@@ -129,7 +129,8 @@ function textable(;
         end
         write(b, "\n \\midrule\n")
     end
-    sumMathFlag::String = summarymathmode ? "\$" : ""
+    leftsummathflag::String = summarymathmode ? "" : "{"
+    rightsummathflag::String = summarymathmode ? "" : "}"
 
     if length(desccontent)>0
         for r::Int ∈ 1:length(desccontent) #for each description row
@@ -137,7 +138,7 @@ function textable(;
           if length(widthdesccontent[r]) ≠ numcontentcols
             for c::Int ∈ 1:length(desccontent[r]) #for each descriptive row
               if length(desccontent[r][c]) ≥ 1
-                write(b,"\t&\t\\multicolumn{$(widthdesccontent[r][c])}{r}{$(sumMathFlag)$(desccontent[r][c])$(sumMathFlag)}")
+                write(b,"\t&\t\\multicolumn{$(widthdesccontent[r][c])}{r}{$(leftsummathflag)$(desccontent[r][c])$(rightsummathflag)}")
               else
                 write(b,"\t&\t\\multicolumn{$(widthdesccontent[r][c])}{r}{}")
               end
@@ -145,7 +146,7 @@ function textable(;
           else
             for c::Int ∈ 1:length(desccontent[r]) #for each descriptive row
               if length(desccontent[r][c]) ≥ 1
-                write(b,"\t&\t$(sumMathFlag)$(desccontent[r][c])$(sumMathFlag)")
+                write(b,"\t&\t$(leftsummathflag)$(desccontent[r][c])$(rightsummathflag)")
               else
                 write(b,"\t&\t")
               end
@@ -303,11 +304,11 @@ function getcontentmatrices!(;
 
               #scale, round and write the β coefficeint and σ into the string matrices
               content[1][r,c] =
-                "\$$(num2str(βs[c][ind], decimaldigits, scalefactor=scaling[r]))\$$starstring"
-                #"$(num2str(βs[c][ind], decimaldigits, scalefactor=scaling[r]))$starstring"
+                #"\$$(num2str(βs[c][ind], decimaldigits, scalefactor=scaling[r]))\$$starstring"
+                "$(num2str(βs[c][ind], decimaldigits, scalefactor=scaling[r]))$starstring"
               content[2][r,c] =
-                "(\$$(num2str(σs[c][ind], decimaldigits, scalefactor=scaling[r]))\$)"
-                #"($(num2str(σs[c][ind], decimaldigits, scalefactor=scaling[r])))"
+                #"(\$$(num2str(σs[c][ind], decimaldigits, scalefactor=scaling[r]))\$)"
+                "($(num2str(σs[c][ind], decimaldigits, scalefactor=scaling[r])))"
           end
         end
     end
