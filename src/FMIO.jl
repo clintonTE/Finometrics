@@ -303,11 +303,11 @@ function getcontentmatrices!(;
 
               #scale, round and write the β coefficeint and σ into the string matrices
               content[1][r,c] =
-                #"\$$(num2str(βs[c][ind], decimaldigits, scalefactor=scaling[r]))\$$starstring"
-                "$(num2str(βs[c][ind], decimaldigits, scalefactor=scaling[r]))$starstring"
+                "\$$(num2str(βs[c][ind], decimaldigits, scalefactor=scaling[r]))\$$starstring"
+                #"$(num2str(βs[c][ind], decimaldigits, scalefactor=scaling[r]))$starstring"
               content[2][r,c] =
-                #"(\$$(num2str(σs[c][ind], decimaldigits, scalefactor=scaling[r]))\$)"
-                "($(num2str(σs[c][ind], decimaldigits, scalefactor=scaling[r])))"
+                "(\$$(num2str(σs[c][ind], decimaldigits, scalefactor=scaling[r]))\$)"
+                #"($(num2str(σs[c][ind], decimaldigits, scalefactor=scaling[r])))"
           end
         end
     end
