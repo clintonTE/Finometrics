@@ -80,7 +80,7 @@ function textable(;
   widthdesccontent::Vector{Vector{Int}} = #contains the number of columns for each entry
     broadcast((i::Int)->ones(Int,length(desccontent[i])),1:length(desccontent)),
   colheadername::Vector{String} = ["" for i ∈ 1:length(colnames)],
-  alignmentstring::String = string(" l", join(["r" for i ∈ 1:maximum(length.(widthcolnames))])),
+  alignmentstring = string(" l | ", join(["S" for i ∈ 1:length(desccontent[1])])),
   rowlabelheader::Bool = false)
 
   #size parameters for content
@@ -205,7 +205,8 @@ function textable(models::Vector{<:FMLM},
     scaling::Vector{Float64}=ones(length(rows)),
     decimaldigits::Int = 2,
     colheadername::Vector{String} = ["" for i::Int ∈ 1:length(colnames)],
-    alignmentstring::String = string(" l | ", join(["r" for i ∈ 1:length(desccontent[1])])),
+    #alignmentstring::String = string(" l | ", join(["r" for i ∈ 1:length(desccontent[1])])),
+    alignmentstring = string(" l | ", join(["S" for i ∈ 1:length(desccontent[1])])),
     rowlabelheader::Bool = false)
 
   Ncols = length(models)
