@@ -212,7 +212,7 @@ const RegressionN = Union{Nothing, Int}
 const spinlock = Threads.SpinLock()
 
 #shared cosntants
-const DEFAULT_STAR_LEGEND = "*p<0.1, **p<0.05, ***p<0.01"
+const DEFAULT_STAR_LEGEND = raw"\text{*}p<0.1, \text{**}p<0.05, \text{***}p<0.01"
 const DEBUG_FMMOD = false
 const DEFAULT_DECIMALS = 4
 

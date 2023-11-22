@@ -198,8 +198,10 @@ function textable(models::Vector{<:FMLM},
     stars::Bool=true,
     starlvls::Vector{Float64} = [.9, .95, .99],
     starlegend::String = stars ? DEFAULT_STAR_LEGEND : "",
-    starstrings::Vector{String} =
-      ["\\ensuremath{^\\text{*}}","\\ensuremath{^\\text{**}}","\\ensuremath{^\\text{***}}"],
+    starstrings =[
+      raw"\textnormal{\superscript{*}}",
+      raw"\textnormal{\superscript{**}}",
+      raw"\textnormal{\superscript{***}}",],
     scaling::Vector{Float64}=ones(length(rows)),
     decimaldigits::Int = 2,
     colheadername::Vector{String} = ["" for i::Int ∈ 1:length(colnames)],
@@ -263,8 +265,12 @@ function getcontentmatrices!(;
     psasσs::Bool = false,
     stars::Bool=true, #whether to display signficance stars
     starlvls::Vector{Float64} = [.9, .95, .99],  #cutoffs for signficance (must be sorted)
-    starstrings::Vector{String} =
-      ["\\ensuremath{^\\text{*}}","\\ensuremath{^\\text{**}}","\\ensuremath{^\\text{***}}"],
+    #starstrings::Vector{String} =
+    #  ["\\ensuremath{^\\text{*}}","\\ensuremath{^\\text{**}}","\\ensuremath{^\\text{***}}"],
+    starstrings =[
+      raw"\textnormal{\superscript{*}}",
+      raw"\textnormal{\superscript{**}}",
+      raw"\textnormal{\superscript{***}}",],
     scaling::Vector{Float64}=ones(length(rows)), # an optional scaling factor
     decimaldigits::Int = 2) #number of decimal digits
 
@@ -296,9 +302,11 @@ function getcontentmatrices!(;
 
               #scale, round and write the β coefficeint and σ into the string matrices
               content[1][r,c] =
-                "\$$(num2str(βs[c][ind], decimaldigits, scalefactor=scaling[r]))\$$starstring"
+                #"\$$(num2str(βs[c][ind], decimaldigits, scalefactor=scaling[r]))\$$starstring"
+                "$(num2str(βs[c][ind], decimaldigits, scalefactor=scaling[r]))$starstring"
               content[2][r,c] =
-                "(\$$(num2str(σs[c][ind], decimaldigits, scalefactor=scaling[r]))\$)"
+                #"(\$$(num2str(σs[c][ind], decimaldigits, scalefactor=scaling[r]))\$)"
+                "($(num2str(σs[c][ind], decimaldigits, scalefactor=scaling[r])))"
           end
         end
     end
