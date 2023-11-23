@@ -263,7 +263,7 @@ function textable(models::Vector{<:FMLM},
     stars=stars, starlvls=starlvls, scaling=scaling,
     decimaldigits=decimaldigits, starstrings=starstrings)
 
-  return textable(colnames,
+  return textable(;colnames,
     contentrownames, content, descrownames,
     desccontent, notes, linespacer,
     summarymathmode, widthcolnames,
