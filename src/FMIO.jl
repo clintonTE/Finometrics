@@ -7,8 +7,8 @@ array2String(args...; keyargs...) = error("Depreciated- replace with array2strin
 
 #functions for converting Floats to Strings
 function num2str(x::T, decimals::Int=DEFAULT_DECIMALS;
-    scalefactor::Float64 = 1.0,
-    scalefactoronhurdle::Float64 = 1.0,
+    scalefactor::Real = 1.0,
+    scalefactoronhurdle::Real = 1.0,
     Ints::Bool = false, scalehurdle::U=nothing, texequation::Bool = false)::String where {
       T<:Union{Real,Missing,Nothing}, U<:Union{Nothing,Real}}
 
