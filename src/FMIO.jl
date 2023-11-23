@@ -224,7 +224,7 @@ function textable(models::Vector{<:FMLM},
       raw"\textnormal{\superscript{*}}",
       raw"\textnormal{\superscript{**}}",
       raw"\textnormal{\superscript{***}}",],
-    scaling::Vector{Float64}=ones(length(rows)),
+    scaling::Vector{<:Real}=ones(length(rows)),
     decimaldigits::Int = 2,
     colheadername::Vector{String} = ["" for i::Int ∈ 1:length(colnames)],
     #alignmentstring::String = string(" l | ", join(["r" for i ∈ 1:length(desccontent[1])])),
@@ -295,7 +295,7 @@ function getcontentmatrices!(;
       raw"\textnormal{\superscript{*}}",
       raw"\textnormal{\superscript{**}}",
       raw"\textnormal{\superscript{***}}",],
-    scaling::Vector{Float64}=ones(length(rows)), # an optional scaling factor
+    scaling::Vector{<:Real}=ones(length(rows)), # an optional scaling factor
     decimaldigits::Int = 2) #number of decimal digits
 
     content::Vector{Matrix{String}} = #will hold the coefficients and errors
