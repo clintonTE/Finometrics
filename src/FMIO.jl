@@ -51,6 +51,23 @@ function array2string(m::Array{Float64}; prefix::String = "",
   return stringmat
 end
 
+SI_UNITX_SETTINGS = raw"
+  \sisetup{
+    table-format=2,
+    table-number-alignment = center,
+    input-open-uncertainty  = ,
+    input-close-uncertainty = ,            
+    table-figures-integer = 1,
+    table-figures-decimal = 2,
+    table-space-text-post = {\superscript{*}},
+    table-space-text-post = {\superscript{**}},
+    table-space-text-post = {\superscript{***}},
+    table-space-text-pre    = (,
+    table-space-text-post   = ),
+  } % centering in tables
+"
+
+
 #textable
 #=    Creates a well-formed Latex table from string components
   The content matrix consists of an array of matrices, which are overlayed
@@ -81,7 +98,9 @@ function textable(;
     broadcast((i::Int)->ones(Int,length(desccontent[i])),1:length(desccontent)),
   colheadername::Vector{String} = ["" for i ∈ 1:length(colnames)],
   alignmentstring = string(" l | ", join(["S" for i ∈ 1:length(desccontent[1])])),
-  rowlabelheader::Bool = false)
+  rowlabelheader::Bool = false,
+  siunitxpreamble=true,
+  siunitxsettings=SI_UNITX_SETTINGS)
 
   #size parameters for content
   numcontentrows::Int = length(contentrownames)
@@ -90,8 +109,10 @@ function textable(;
 
   numcontentsubrows::Int = length(content)
 
-      #intiate the stream
+  #intiate the stream
   b::IOBuffer = IOBuffer()
+
+  siunitxpreamble && write(b,siunitxsettings)
   write(b, """
       \\begin{tabular}{$alignmentstring""")
 
@@ -183,7 +204,7 @@ OUT: A latex table string
 function textable(models::Vector{<:FMLM},
     getΣ::Union{Function, Vector{Function}},
     rows::Vector{String};
-    colnames::Vector{Vector{String}} = [["($i)" for i ∈ 1:length(models)]],
+    colnames::Vector{Vector{String}} = [["{($i)}" for i ∈ 1:length(models)]],
     contentrownames::Vector{String} = String.(rows),
     descrownames::Vector{String}=Vector{String}(),
     desccontent::Vector{Vector{String}}=Vector{Vector{String}}(),
@@ -208,7 +229,8 @@ function textable(models::Vector{<:FMLM},
     colheadername::Vector{String} = ["" for i::Int ∈ 1:length(colnames)],
     #alignmentstring::String = string(" l | ", join(["r" for i ∈ 1:length(desccontent[1])])),
     alignmentstring = string(" l | ", join(["S" for i ∈ 1:length(desccontent[1])])),
-    rowlabelheader::Bool = false)
+    rowlabelheader::Bool = false,
+    kwargs...)
 
   Ncols = length(models)
   numcontentrows = length(rows)
@@ -241,13 +263,13 @@ function textable(models::Vector{<:FMLM},
     stars=stars, starlvls=starlvls, scaling=scaling,
     decimaldigits=decimaldigits, starstrings=starstrings)
 
-  return textable(colnames=colnames,
-    contentrownames=contentrownames, content=content, descrownames=descrownames,
-    desccontent=desccontent, notes=notes, linespacer=linespacer,
-    summarymathmode=summarymathmode, widthcolnames=widthcolnames,
-    widthdesccontent=widthdesccontent, colheadername=colheadername,
-    alignmentcolnames=alignmentcolnames,
-    alignmentstring=alignmentstring, rowlabelheader=rowlabelheader)
+  return textable(colnames,
+    contentrownames, content, descrownames,
+    desccontent, notes, linespacer,
+    summarymathmode, widthcolnames,
+    widthdesccontent, colheadername,
+    alignmentcolnames,
+    alignmentstring, rowlabelheader, kwargs...)
 end
 
 
