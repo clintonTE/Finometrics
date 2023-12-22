@@ -53,6 +53,8 @@ end
 
 SI_UNITX_SETTINGS = raw"
   \sisetup{
+    detect-all,
+    input-symbols = {()},
     table-format=2,
     table-number-alignment = center,
     input-open-uncertainty  = ,
