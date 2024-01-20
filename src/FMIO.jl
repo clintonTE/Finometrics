@@ -278,7 +278,7 @@ end
 
 
 calculatep(::Val{:ttest_2tailed};N,β,σ) = cdf(TDist(N), β/σ) > .5 ? 1-(1.0 - cdf(TDist(N), β/σ))*2.0 : 1.0 - cdf(TDist(N), β/σ)*2.0
-calculatep(::Val{:ttest_2tailed_offset};N,β,σ,β0) = calculatep(Val{:ttest_2tailed}();N,β-β0,σ)
+calculatep(::Val{:ttest_2tailed_offset};N,β,σ,β0) = calculatep(Val{:ttest_2tailed}();N,β= β-β0,σ)
 calculatep(::Val{:ttest_1tailed};N,β,σ) = cdf(TDist(N), β/σ) > .5 ? 1-(1.0 - cdf(TDist(N), β/σ)) : 1.0 - cdf(TDist(N), β/σ)
 calculatep(::Val{:asymptotic_2tailed};N,β,σ) = cdf(Normal(), β/σ) > .5 ? 1-(1.0 - cdf(Normal(), β/σ))*2.0 : 1.0 - cdf(Normal(), β/σ)*2.0
 calculatep(::Val{:asymptotic_1tailed};N,β,σ) = cdf(Normal(), β/σ) > .5 ? 1-(1.0 - cdf(Normal(), β/σ)) : 1.0 - cdf(Normal(), β/σ)
