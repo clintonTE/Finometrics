@@ -261,7 +261,7 @@ function textable(models::Vector{<:FMLM},
   end
 
   #get the content matrices
-  content::Vector{Matrix{String}} = getcontentmatrices!( βs, σs,
+  content::Vector{Matrix{String}} = getcontentmatrices!(; βs, σs,
     Xnames, Ns, rows,
     stars, starlvls, scaling,
     decimaldigits, starstrings,pmethod)
