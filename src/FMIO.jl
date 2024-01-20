@@ -275,6 +275,13 @@ function textable(models::Vector{<:FMLM},
 end
 
 
+
+calculatep(::Val{:ttest_2tailed};N,β,σ) = cdf(TDist(N), β/σ) > .5 ? 1-(1.0 - cdf(TDist(N), β/σ))*2.0 : 1.0 - cdf(TDist(N), β/σ)*2.0
+calculatep(::Val{:ttest_1tailed};N,β,σ) = cdf(TDist(N), β/σ) > .5 ? 1-(1.0 - cdf(TDist(N), β/σ)) : 1.0 - cdf(TDist(N), β/σ)
+calculatep(::Val{:asymptotic_2tailed};N,β,σ) = cdf(Normal(), β/σ) > .5 ? 1-(1.0 - cdf(Normal(), β/σ))*2.0 : 1.0 - cdf(Normal(), β/σ)*2.0
+calculatep(::Val{:asymptotic_1tailed};N,β,σ) = cdf(Normal(), β/σ) > .5 ? 1-(1.0 - cdf(Normal(), β/σ)) : 1.0 - cdf(Normal(), β/σ)
+
+
 #=getcontentmatrices!
 this is a bit of utiltiy code for making tex tables. It is not model specific
 hence why it was extracted into its own function
@@ -289,6 +296,7 @@ function getcontentmatrices!(;
     Ns::Vector{Int},
     rows::Vector{String},
     psasσs::Bool = false,
+
     stars::Bool=true, #whether to display signficance stars
     starlvls::Vector{Float64} = [.9, .95, .99],  #cutoffs for signficance (must be sorted)
     #starstrings::Vector{String} =
@@ -298,13 +306,24 @@ function getcontentmatrices!(;
       raw"\textnormal{\superscript{**}}",
       raw"\textnormal{\superscript{***}}",],
     scaling::Vector{<:Real}=ones(length(rows)), # an optional scaling factor
-    decimaldigits::Int = 2) #number of decimal digits
+    decimaldigits::Int = 2,
+    pmethod=Val{:ttest_2tailed}(),) #number of decimal digits
+
+    K= length(βs)
+
+    #the below allows for customization of the p value star techniques
+    #can either supply a singleton or a vector for all
+    getpfunc(m::Val) = (;kwargs...)->calculatep(m; kwargs...)
+    getpfunc(f::Function) = f
+    getpfunc(v::Symbol) = getpfunc(Val(v))
+    getpfunc(v::Vector) = v .|> getpfunc
+    pfuncs = getpfunc(pmethod)
 
     content::Vector{Matrix{String}} = #will hold the coefficients and errors
         [fill("",length(rows),length(βs)) for i ∈ 1:2];
 
     #iterate through the models
-    for c ∈ 1:length(βs)
+    for c ∈ 1:K
 
         #build a dictionary of the names
         xnametable::Dict = Dict(Xnames[c][i] => i for i ∈ 1:length(βs[c]))
@@ -318,8 +337,9 @@ function getcontentmatrices!(;
                 if psasσs
                   p = σs[c][ind]
                 else
-                  p = cdf(TDist(Ns[c]), βs[c][ind]/σs[c][ind]) #get CDF from T distribution
-                  p = p > .5 ? 1-(1.0 - p)*2.0 : 1.0 - p*2.0 #calc 2-tailed p value
+                  p = pfuncs[c](N=Ns[c], β=βs[c][ind], σ=σs[c][ind])
+                  #p = cdf(TDist(Ns[c]), βs[c][ind]/σs[c][ind]) #get CDF from T distribution
+                  #p = p > .5 ? 1-(1.0 - p)*2.0 : 1.0 - p*2.0 #calc 2-tailed p value
                 end
                 starstring = sum(p.>starlvls) > 0 ?  starstrings[sum(p.>starlvls)] : ""
               else

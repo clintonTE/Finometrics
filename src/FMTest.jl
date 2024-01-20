@@ -342,6 +342,8 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     runslow && (@assert diag(ΣWhite).^.5 ≈ diag(ΣWhiteSlow).^.5)
     runslow && @info "passed white error test"
 
+    
+
     #get the modified white SEs
     Σclustered::Matrix{Float64} = similar(ΣHomosked)
     Finometrics.clusteredΣ!(lin, Σclustered)
@@ -357,29 +359,33 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     Finometrics.clusteredΣ!(linalt2, Σwithinclustered, clusters = [linalt2.clusters[1]], testequivelance=true)
     Finometrics.clusteredΣ!(linalt2, Σwithinclustered, testequivelance=true)
     @info "passsed cluster method equivelance test"
-
+    
 
     #get the nw SEs
     ΣNW::Matrix{Float64} = similar(ΣHomosked)
     Finometrics.neweywestΣ!(lin, 3, ΣNW)
     runslow && (ΣNWSlow::Matrix{Float64} = Finometrics.neweywestΣslow(lin, 3))
-
+ 
     #print the coefficients
     println("\nNW Errors: ",diag(ΣNW).^.5)
     runslow && println("Check: ", diag(ΣNWSlow).^.5)
     runslow && @assert diag(ΣNW).^.5 ≈ diag(ΣNWSlow).^.5
     runslow && @info "passed newey west test"
+      
 
     #get the nw SEs
     ΣNWpanel::Matrix{Float64} = similar(ΣHomosked)
     Finometrics.neweywestpanelΣ!(lin, 3, ΣNWpanel)
+    #throw("got here2.5") 
     runslow && (ΣNWpanelslow::Matrix{Float64} = Finometrics.neweywestpanelΣslow!(lin, 3))
-
+    #throw("got here3") 
+    
     #print the coefficients
     println("\nNW panel Errors: ",diag(ΣNWpanel).^.5)
     runslow && println("Check: ", diag(ΣNWpanelslow).^.5)
     runslow && diag(ΣNWpanel).^.5 ≈ diag(ΣNWpanelslow).^.5
     runslow && @info "passed newey west panel test"
+    #throw("got here3") 
 
     SST::Float64 = sum((lin.Y .- mean(lin.Y)).^2)
     SSE::Float64 = sum(lin.ε.^2)
@@ -387,7 +393,7 @@ function LMtest(::Type{M}=Matrix{Float64}, ::Type{V}=Vector{Float64};
     println("\nR²: $(Finometrics.R²(lin)) R²-derived: $(1 - SSE/SST)")
     @assert Finometrics.R²(lin) ≈ 1 - SSE/SST
     @info "passed R² test"
-
+    
     #test the project routines
     Pa::V = V(undef, N)
     Finometrics.project!(X,Pa)

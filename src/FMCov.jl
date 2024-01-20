@@ -274,30 +274,40 @@ modifiedwhiteΣslow(lin::FMLM, dofcorrect::Float64 = lin.N/lin.dof) = modifiedwh
     #that is, views don't seem to work properly on gpu matrices
     T::Type = eltype(M)
     Rv::Matrix{T} = Matrix{T}(undef, xqr.K, xqr.K) #pre-allocate working matrix
-    RRinv::Matrix{T} = BLAS.gemm('N', 'T', xqr.Rinv, xqr.Rinv) #this is equivelent to [X'X]^-1
+    #RRinv::Matrix{T} = BLAS.gemm('N', 'T', xqr.Rinv, xqr.Rinv) #this is equivelent to [X'X]^-1
+    RRinv::Matrix{T} = xqr.Rinv*xqr.Rinv'
 
     #need to multiply through by the error
     Xe::Matrix{T} = X .* ε
-    ST::Matrix{T} = BLAS.gemm('T','N',T(1.0/xqr.N), Xe, Xe)
+    #ST::Matrix{T} = BLAS.gemm('T','N',T(1.0/xqr.N), Xe, Xe)
+    ST::Matrix{T} = Xe'Xe .* (1.0/xqr.N)
     for v::Int ∈ 1:lag
       #overwrites Rv with (1/N)R'R
-      BLAS.gemm!('T', 'N', T(1.0/xqr.N), view(Xe, (v+1):(xqr.N), :),view(Xe, 1:(xqr.N-v), :), T(0.0), Rv)
+      #BLAS.gemm!('T', 'N', T(1.0/xqr.N), view(Xe, (v+1):(xqr.N), :),view(Xe, 1:(xqr.N-v), :), T(0.0), Rv)
+      Rv .= Xe[(v+1):(xqr.N), :]'*Xe[1:(xqr.N-v), :] .* (1.0/xqr.N)
       #Rv .= view(Xe, (v+1):(xqr.N), :)' * view(Xe, 1:(xqr.N-v), :) .* (1.0/xqr.N)
       ST += (lag + 1 - v)/(lag+1.) .* (Rv .+ Rv')
     end
 
+
     #this is [X'X]^-1S=[R'R]^-1S
-    RRinvS::Matrix{T} = BLAS.gemm('N', 'N', RRinv, ST)
+    #RRinvS::Matrix{T} = BLAS.gemm('N', 'N', RRinv, ST)
+    RRinvS::Matrix{T} = RRinv * ST
+    #Σ .= RRinvS
+    #return Σ
+
 
     #finally we have T[X'X]^-1S[X'X]^-1
     if M<:Matrix{Float64}
-      BLAS.gemm!('N','N',Float64(xqr.N), RRinvS, RRinv, 0.0, Σ)
+      #BLAS.gemm!('N','N',Float64(xqr.N), RRinvS, RRinv, 0.0, Σ)
+      Σ .= RRinvS*RRinv .* xqr.N
     else
-      Σ = BLAS.gemm('N','N',T(xqr.N), RRinvS, RRinv)
+      Σ = RRinvS*RRinv .* xqr.N
     end
 
-
+    
     Σ .*= dofcorrect
+    #throw("got here1")
     #println("$(diag(Σ .* dofcorrect))")sasa
     return Σ
   end
@@ -305,8 +315,9 @@ modifiedwhiteΣslow(lin::FMLM, dofcorrect::Float64 = lin.N/lin.dof) = modifiedwh
 
   function neweywestΣ!(lin::FMLM{M,V}, lag::Int,
     Σ::M = M(undef, lin.K, lin.K))::M where {M<: AbstractMatrix, V<:AbstractVector}
-
-    return neweywestΣ!(lin.X, lin.xqr, lin.ε, lag, Σ, lin.N/lin.dof)
+    res = neweywestΣ!(lin.X, lin.xqr, lin.ε, lag, Σ, lin.N/lin.dof)
+    #throw("got here1.5")
+    return res
   end
 
   #helper function in case the input requires a single argument function
@@ -375,7 +386,8 @@ function neweywestpanelΣ!(X::M, xqr::FMQR{M}, ε::V, clusters::FMClusters,
   Sₜ::M = zeros(K,K) #holds teh central matrix
 
   temp::M = M(undef, K, K) #pre-allocate working matrix
-  RRinv::M = BLAS.gemm('N', 'T', xqr.Rinv, xqr.Rinv) #this is equivelent to [X'X]^-1
+  #RRinv::M = BLAS.gemm('N', 'T', xqr.Rinv, xqr.Rinv) #this is equivelent to [X'X]^-1
+  RRinv::M = xqr.Rinv * xqr.Rinv'
 
   inddf::DataFrame = DataFrame(clusters=clusters[1], idx = 1:xqr.N)
   sindfs::GroupedDataFrame = groupby(inddf, :clusters)
@@ -390,23 +402,27 @@ function neweywestpanelΣ!(X::M, xqr::FMQR{M}, ε::V, clusters::FMClusters,
     T::Int = length(εₙ)
     Xₑ::M = Xₙ .* εₙ
 
-    Sₜ .+= BLAS.gemm('T','N',  E(1.0/N), Xₑ, Xₑ)
+    #Sₜ .+= BLAS.gemm('T','N',  E(1.0/N), Xₑ, Xₑ)
+    Sₜ .+= Xₑ'Xₑ./N
 
     for v::Int ∈ 1:lag
       #overwrites temp with (1/N)R'R
-      BLAS.gemm!('T', 'N',   E(1.0/N), view(Xₑ, (v+1):T, :),view(Xₑ, 1:(T-v), :),   E(0.0), temp)
+      #BLAS.gemm!('T', 'N',   E(1.0/N), view(Xₑ, (v+1):T, :),view(Xₑ, 1:(T-v), :),   E(0.0), temp)
+      temp .= Xₑ[(v+1):T, :]'Xₑ[1:(T-v), :] ./ N
       Sₜ .+= (lag + 1 - v)/(lag+1.) .* (temp .+ temp')
     end
 
   end
   #Sₜ = Matrix{Float64}(I,K,K)
   #this is [X'X]^-1S=[R'R]^-1S
-  RRinvS::M = BLAS.gemm('N', 'N', RRinv, Sₜ)
+  #RRinvS::M = BLAS.gemm('N', 'N', RRinv, Sₜ)
+  RRinvS::M = RRinv*Sₜ
 
   #display(RRinv)
 
   #finally we have T[X'X]^-1S[X'X]^-1
-  BLAS.gemm!('N','N', E(N), RRinvS, RRinv, E(0.0), Σ)
+  #BLAS.gemm!('N','N', E(N), RRinvS, RRinv, E(0.0), Σ)
+  Σ .= RRinvS * RRinv .* N
   #println("$(diag(Σ .* dofCorrect))")sasa
   return Σ
 end
@@ -465,13 +481,16 @@ function neweywestpanelΣslow!(X::M, xqr::FMQR{M}, ε::V, clusters::FMClusters,
   #Sₜ = Matrix{Float64}(I,K,K)
 
   #the final step is to multiply out the var-covar sandwhich
-  RRinv::M = BLAS.gemm('N', 'T', xqr.Rinv, xqr.Rinv) #this is equivelent to [X'X]^-1
+  #RRinv::M = BLAS.gemm('N', 'T', xqr.Rinv, xqr.Rinv) #this is equivelent to [X'X]^-1
+  RRinv::M = xqr.Rinv*xqr.Rinv' #this is equivelent to [X'X]^-1
 
   #this is [X'X]^-1S=[R'R]^-1S
-  RRinvS::M= BLAS.gemm('N', 'N', RRinv, Sₜ)
+  #RRinvS::M= BLAS.gemm('N', 'N', RRinv, Sₜ)
+  RRinvS::M= RRinv*Sₜ
 
   #finally we have T[X'X]^-1S[X'X]^-1
-  BLAS.gemm!('N','N',T(N), RRinvS, RRinv, T(0.0), Σ)
+  #BLAS.gemm!('N','N',T(N), RRinvS, RRinv, T(0.0), Σ)
+  Σ .= RRinvS*RRinv.*N
 
   return Σ
 end
