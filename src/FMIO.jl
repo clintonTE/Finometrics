@@ -232,6 +232,7 @@ function textable(models::Vector{<:FMLM},
     #alignmentstring::String = string(" l | ", join(["r" for i ∈ 1:length(desccontent[1])])),
     alignmentstring = string(" l | ", join(["S" for i ∈ 1:length(desccontent[1])])),
     rowlabelheader::Bool = false,
+    pmethod=:ttest_2tailed,
     kwargs...)
 
   Ncols = length(models)
@@ -260,10 +261,10 @@ function textable(models::Vector{<:FMLM},
   end
 
   #get the content matrices
-  content::Vector{Matrix{String}} = getcontentmatrices!( βs=βs, σs=σs,
-    Xnames=Xnames, Ns=Ns, rows=rows,
-    stars=stars, starlvls=starlvls, scaling=scaling,
-    decimaldigits=decimaldigits, starstrings=starstrings)
+  content::Vector{Matrix{String}} = getcontentmatrices!( βs, σs,
+    Xnames, Ns, rows,
+    stars, starlvls, scaling,
+    decimaldigits, starstrings,pmethod)
 
   return textable(;colnames,
     contentrownames, content, descrownames,
@@ -277,6 +278,7 @@ end
 
 
 calculatep(::Val{:ttest_2tailed};N,β,σ) = cdf(TDist(N), β/σ) > .5 ? 1-(1.0 - cdf(TDist(N), β/σ))*2.0 : 1.0 - cdf(TDist(N), β/σ)*2.0
+calculatep(::Val{:ttest_2tailed_offset};N,β,σ,β0) = calculatep(Val{:ttest_2tailed}();N,β-β0,σ)
 calculatep(::Val{:ttest_1tailed};N,β,σ) = cdf(TDist(N), β/σ) > .5 ? 1-(1.0 - cdf(TDist(N), β/σ)) : 1.0 - cdf(TDist(N), β/σ)
 calculatep(::Val{:asymptotic_2tailed};N,β,σ) = cdf(Normal(), β/σ) > .5 ? 1-(1.0 - cdf(Normal(), β/σ))*2.0 : 1.0 - cdf(Normal(), β/σ)*2.0
 calculatep(::Val{:asymptotic_1tailed};N,β,σ) = cdf(Normal(), β/σ) > .5 ? 1-(1.0 - cdf(Normal(), β/σ)) : 1.0 - cdf(Normal(), β/σ)
@@ -307,7 +309,7 @@ function getcontentmatrices!(;
       raw"\textnormal{\superscript{***}}",],
     scaling::Vector{<:Real}=ones(length(rows)), # an optional scaling factor
     decimaldigits::Int = 2,
-    pmethod=Val{:ttest_2tailed}(),) #number of decimal digits
+    pmethod=:ttest_2tailed) #number of decimal digits
 
     K= length(βs)
 
