@@ -318,7 +318,8 @@ function getcontentmatrices!(;
     getpfunc(m::Val) = (;kwargs...)->calculatep(m; kwargs...)
     getpfunc(f::Function) = f
     getpfunc(s::Symbol) = getpfunc(Val(s))
-    getpfunc(v::Vector) = v .|> vk->getpfunc(vk)
+    getpfunc(s::String) = s |> Symbol |> getpfunc
+    getpfunc(v::Vector) = v .|> getpfunc #v .|> vk->getpfunc(vk)
     pfuncs = getpfunc(pmethod)
 
     content::Vector{Matrix{String}} = #will hold the coefficients and errors
