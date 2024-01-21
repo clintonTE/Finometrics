@@ -317,8 +317,8 @@ function getcontentmatrices!(;
     #can either supply a singleton or a vector for all
     getpfunc(m::Val) = (;kwargs...)->calculatep(m; kwargs...)
     getpfunc(f::Function) = f
-    getpfunc(v::Symbol) = getpfunc(Val(v))
-    getpfunc(v::Vector) = v .|> getpfunc
+    getpfunc(s::Symbol) = getpfunc(Val(s))
+    getpfunc(v::Vector) = v .|> vk->getpfunc(vk)
     pfuncs = getpfunc(pmethod)
 
     content::Vector{Matrix{String}} = #will hold the coefficients and errors
