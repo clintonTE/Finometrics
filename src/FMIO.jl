@@ -308,19 +308,21 @@ function getcontentmatrices!(;
       raw"\textnormal{\superscript{**}}",
       raw"\textnormal{\superscript{***}}",],
     scaling::Vector{<:Real}=ones(length(rows)), # an optional scaling factor
-    decimaldigits::Int = 2,
-    pmethod=:ttest_2tailed) #number of decimal digits
+    decimaldigits::Int = 2,#number of decimal digits
+    pmethod=:ttest_2tailed) 
 
     K= length(βs)
-
+    allXnames = vcat(Xnames...) |> unique!
     #the below allows for customization of the p value star techniques
     #can either supply a singleton or a vector for all
     getpfunc(m::Val) = (;kwargs...)->calculatep(m; kwargs...)
     getpfunc(f::Function) = f
     getpfunc(s::Symbol) = getpfunc(Val(s))
     getpfunc(s::String) = s |> Symbol |> getpfunc
-    getpfunc(v::Vector) = v .|> getpfunc #v .|> vk->getpfunc(vk)
-    pfuncs = getpfunc(pmethod)
+    #getpfunc(v::Vector) = v .|> getpfunc #v .|> vk->getpfunc(vk)
+    getpfuncs(pm) = Dict(allXnames .=> getpfunc(pm))
+    getpfuncs(pm::Dict) = Dict(allXnames .=> (allXnames .|> xn->getpfunc(pm[xn])))
+    pfuncs = getpfuncs(pmethod)
 
     content::Vector{Matrix{String}} = #will hold the coefficients and errors
         [fill("",length(rows),length(βs)) for i ∈ 1:2];
@@ -340,7 +342,7 @@ function getcontentmatrices!(;
                 if psasσs
                   p = σs[c][ind]
                 else
-                  p = pfuncs[ind](;N=Ns[c], β=βs[c][ind], σ=σs[c][ind])
+                  p = pfuncs[xnametable[rows[r]]](;N=Ns[c], β=βs[c][ind], σ=σs[c][ind])
                   #p = cdf(TDist(Ns[c]), βs[c][ind]/σs[c][ind]) #get CDF from T distribution
                   #p = p > .5 ? 1-(1.0 - p)*2.0 : 1.0 - p*2.0 #calc 2-tailed p value
                 end
