@@ -320,8 +320,9 @@ function getcontentmatrices!(;
     getpfunc(s::Symbol) = getpfunc(Val(s))
     getpfunc(s::String) = s |> Symbol |> getpfunc
     #getpfunc(v::Vector) = v .|> getpfunc #v .|> vk->getpfunc(vk)
-    getpfuncs(pm) = Dict(allXnames .=> getpfunc(pm))
-    getpfuncs(pm::Dict) = Dict(allXnames .=> (allXnames .|> xn->getpfunc(pm[xn])))
+    getpfuncs(pm::Union{AbstractString, Symbol, Function, Val}) = Dict(allXnames .=> getpfunc(pm))
+    getpfuncs(pm) = throw("getpfuncs(pm) not defined for pm=$(pm) as pm is of type $(typeof(pm)) (require singleton or Dict)")
+    getpfuncs(pm::Dict) = intersect(allXnames, keys(pm)) |> nms-> Dict(nms .=> (nms .|> xn->getpfunc(pm[xn])))
     pfuncs = getpfuncs(pmethod)
 
     content::Vector{Matrix{String}} = #will hold the coefficients and errors
