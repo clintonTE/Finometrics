@@ -343,7 +343,7 @@ function getcontentmatrices!(;
                 if psasσs
                   p = σs[c][ind]
                 else
-                  p = pfuncs[Xnames[c][r]](;N=Ns[c], β=βs[c][ind], σ=σs[c][ind])
+                  p = pfuncs[Xnames[c][ind]](;N=Ns[c], β=βs[c][ind], σ=σs[c][ind])
                   #p = cdf(TDist(Ns[c]), βs[c][ind]/σs[c][ind]) #get CDF from T distribution
                   #p = p > .5 ? 1-(1.0 - p)*2.0 : 1.0 - p*2.0 #calc 2-tailed p value
                 end
