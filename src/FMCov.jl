@@ -116,14 +116,16 @@ function clusteredΣ!(X::M, xqr::FMQR{M}, ε::V, clusters::C,
   end
 
   # Calc [X'X]^-1*B*[X'X]^-1
-  RRinv::M =  BLAS.gemm('N','T',xqr.Rinv,xqr.Rinv)
-  RRinvB::M = BLAS.gemm('N','N',RRinv,B)
+  #RRinv::M =  BLAS.gemm('N','T',xqr.Rinv,xqr.Rinv)
+  RRinv::M =  xqr.Rinv*xqr.Rinv'
+  RRinvB::M = RRinv*B
 
   dofcorrect::Float64 = Nclusters/(Nclusters-1.)*(xqr.N-1.)/dof #small sample correction
 
   if M<:Matrix{Float64}
     ##try
-      BLAS.gemm!('N','N',dofcorrect,RRinvB,RRinv,0.0,Σ)
+      #BLAS.gemm!('N','N',dofcorrect,RRinvB,RRinv,0.0,Σ)
+      Σ .= RRinvB*RRinv*dofcorrect
     #=catch err
       @info "RRinvB size: $(size(RRinvB))"
       @info "RRinv size: $(size(RRinv))"
@@ -133,7 +135,7 @@ function clusteredΣ!(X::M, xqr::FMQR{M}, ε::V, clusters::C,
       error("err: $err")
     end=#
   else
-    Σ = Matrix(BLAS.gemm('N','N',dofcorrect,RRinvB,RRinv))
+    Σ = Matrix(RRinvB*RRinv*dofcorrect)
   end
 
   return Σ
