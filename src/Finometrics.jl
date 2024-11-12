@@ -4,7 +4,7 @@ using Revise
 
 ##################Dependencies
 
-using  DataFrames, Distributions, StatsBase, GLM, CategoricalArrays,  Dates, LinearAlgebra, StatsModels, Formatting, NLopt
+using  DataFrames, Distributions, StatsBase, GLM, CategoricalArrays,  Dates, LinearAlgebra, StatsModels, NLopt
 
 try
   using CUDA
