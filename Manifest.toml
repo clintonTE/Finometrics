@@ -2,7 +2,7 @@
 
 julia_version = "1.11.1"
 manifest_format = "2.0"
-project_hash = "8f0721f5b6700ef4f2748eeb0d99825f13e0f823"
+project_hash = "4a795345bb0197eef5d0e6e2db7b86d79ce9dee5"
 
 [[deps.AliasTables]]
 deps = ["PtrArrays", "Random"]
@@ -146,12 +146,6 @@ weakdeps = ["PDMats", "SparseArrays", "Statistics"]
     FillArraysSparseArraysExt = "SparseArrays"
     FillArraysStatisticsExt = "Statistics"
 
-[[deps.Formatting]]
-deps = ["Logging", "Printf"]
-git-tree-sha1 = "fb409abab2caf118986fc597ba84b50cbaf00b87"
-uuid = "59287772-0a20-5a39-b81b-1366585eb4c0"
-version = "0.4.3"
-
 [[deps.Future]]
 deps = ["Random"]
 uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
@@ -210,9 +204,9 @@ version = "1.6.1"
 
 [[deps.JuliaInterpreter]]
 deps = ["CodeTracking", "InteractiveUtils", "Random", "UUIDs"]
-git-tree-sha1 = "2984284a8abcfcc4784d95a9e2ea4e352dd8ede7"
+git-tree-sha1 = "fc8504eca188aaae4345649ca6105806bc584b70"
 uuid = "aa1ae85d-cabe-5617-a682-6adf51b2e16a"
-version = "0.9.36"
+version = "0.9.37"
 
 [[deps.LaTeXStrings]]
 git-tree-sha1 = "dda21b8cbd6a6c40d9d02a73230f9d70fed6918c"
@@ -426,9 +420,9 @@ version = "1.3.0"
 
 [[deps.Revise]]
 deps = ["CodeTracking", "Distributed", "FileWatching", "JuliaInterpreter", "LibGit2", "LoweredCodeUtils", "OrderedCollections", "REPL", "Requires", "UUIDs", "Unicode"]
-git-tree-sha1 = "7f4228017b83c66bd6aa4fddeb170ce487e53bc7"
+git-tree-sha1 = "834aedb1369919a7b2026d7e04c2d49a311d26f4"
 uuid = "295af30f-e4ad-537b-8983-00126c2a3abe"
-version = "3.6.2"
+version = "3.6.3"
 
 [[deps.Rmath]]
 deps = ["Random", "Rmath_jll"]
