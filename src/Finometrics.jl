@@ -24,7 +24,7 @@ end
 
 testfunc()=#
 
-import Base: +, -, ==, >, <, ≥, ≤, isless, isequal
+import Base: +, -, ==, >, <, ≥, ≤, isless, isequal, Float64, Int
 import Base: push!, length, iterate, broadcastable
 
 #######################MACROS###################
@@ -242,7 +242,7 @@ include("FMVAR.jl")
 include("FMNumerical.jl")
 include("FMSpecs.jl")
 include("FMYearQuarter.jl")
-include("FMTest.jl") #comment this out when testing
+#include("FMTest.jl") #comment this out when testing
 #include("FMRegBroken2SLS.jl")
 
 #type is derived from a user-defined type
