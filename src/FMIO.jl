@@ -24,7 +24,7 @@ function num2str(x::T, decimals::Int=DEFAULT_DECIMALS;
   elseif decimals == 0 || (Ints && round(x) == x)
     outstr = "$(Int(round(x)))"
   else
-    outstr = format("{:.$(decimals)f}",x)
+    outstr = Printf.format("{:.$(decimals)f}",x)
   end
 
   outstr = texequation ? "\$$outstr\$" : outstr
