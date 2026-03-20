@@ -5,7 +5,7 @@ using Revise
 ##################Dependencies
 
 using  DataFrames, Distributions, StatsBase, GLM, CategoricalArrays,  Dates, LinearAlgebra, StatsModels, NLopt
-
+using Printf
 try
   using CUDA
   CUDA.allowscalar(false) #default
